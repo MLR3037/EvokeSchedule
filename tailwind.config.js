@@ -1,4 +1,4 @@
-// tailwind.config.js (ES module format)
+/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
