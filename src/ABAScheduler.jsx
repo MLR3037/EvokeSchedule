@@ -1513,7 +1513,7 @@ const ABAScheduler = () => {
       ];
       
       sessionTypes.forEach(sessionInfo => {
-        if (!sessionInfo.shouldHave) return; // Skip if student shouldn't have this session
+        if (!sessionInfo.shouldHave) return; // Skip if student shouldn't have this session. test.
         
         // Check if this session is already assigned
         const existingSession = allAssignments.find(s => 
