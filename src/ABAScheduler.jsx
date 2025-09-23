@@ -1,9 +1,16 @@
+  // Fisher-Yates shuffle utility for variety
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
 import React, { useState } from 'react';
 import { Plus, Download, Edit3, Save, X } from 'lucide-react';
 
 const ABAScheduler = () => {
   const [staff, setStaff] = useState([
-    { id: 1, name: 'Adam', role: 'RBT', available: true },
     { id: 2, name: 'Alannah', role: 'BS', available: true },
     { id: 3, name: 'Allie', role: 'RBT', available: true },
     { id: 4, name: 'Amber', role: 'RBT', available: true },
@@ -88,7 +95,6 @@ const ABAScheduler = () => {
     { id: 83, name: 'Eliza', role: 'Director', available: true },
     { id: 84, name: 'Sam K', role: 'Clinical Trainer', available: true }
   ]);
-
   const [students, setStudents] = useState([
     { id: 1, name: 'Ada', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Araceli', 'Charlie', 'Helen', 'Katie', 'Klaus', 'Liz M', 'Taylor', 'Lyndsey'] },
     { id: 3, name: 'Alejandro', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Jayme', 'Keyshawn', 'Klaus', 'Laurel', 'Lex', 'Taylor'] },
@@ -145,16 +151,33 @@ const ABAScheduler = () => {
 
   const [schedule, setSchedule] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [showAddSession, setShowAddSession] = useState(false);
-  const [showTeamManager, setShowTeamManager] = useState(false);
-  const [showStaffManager, setShowStaffManager] = useState(false);
   const [assignmentHistory, setAssignmentHistory] = useState([]);
   const [scheduleAnalysis, setScheduleAnalysis] = useState(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showAttendanceManager, setShowAttendanceManager] = useState(false);
   
   // New states for manual assignment
   const [editMode, setEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState({});
+  
+  // Attendance tracking - key format: "studentId-date"
+  const [studentAttendance, setStudentAttendance] = useState({});
+  
+  // Lunch overrides - key format: "studentId-date-lunchType" (e.g., "1-2024-01-15-lunch1")
+  const [lunchOverrides, setLunchOverrides] = useState({});
+  
+  // Assignment rotation tracking - key format: "studentId-staffId", value: array of recent dates
+  const [recentAssignments, setRecentAssignments] = useState({});
+  
+  // Team staff display expansion tracking
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
+  
+  // Pending BCBA assignments that need manual selection
+  const [pendingBCBAAssignments, setPendingBCBAAssignments] = useState([]);
+  
+  // Additional modal states
+  const [showStaffManager, setShowStaffManager] = useState(false);
+  const [showTeamManager, setShowTeamManager] = useState(false);
 
   const sessionTypes = {
     'AM Session (8:45-11:30)': '8:45-11:30',
@@ -169,196 +192,223 @@ const ABAScheduler = () => {
   const staffPriority = ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC', 'Teacher'];
   const specialistRoles = ['BS', 'EA', 'MHA', 'BCBA'];
   const directServiceRoles = ['RBT', 'BS', 'EA', 'MHA', 'BCBA'];
-  const lunchOnlyRoles = ['Director', 'Clinical Trainer']; // Never assigned to AM/PM sessions
+  const lunchOnlyRoles = ['Director', 'Clinical Trainer'];
 
   const getStaffByName = (name) => {
     return staff.find(s => s.name === name);
   };
 
-  // CSV Export Function
-  const exportToCSV = () => {
-    if (schedule.length === 0) {
-      alert('No schedule data to export. Please run Auto-Assign first.');
-      return;
-    }
-
-    const headers = [
-      'Date',
-      'Student Name',
-      'Student Ratio',
-      'Lunch Schedule',
-      'Session Type',
-      'Time',
-      'Staff Name',
-      'Staff Role',
-      'Team Member',
-      'Pairing Status',
-      'Session ID'
-    ];
-
-    const rows = schedule.map(session => {
-      const student = students.find(s => s.id === session.studentId);
-      const pairedStudent = session.pairedStudentId ? students.find(s => s.id === session.pairedStudentId) : null;
-      const staffMember = staff.find(s => s.id === session.staffId);
-      const isTeamMember = student?.teamStaff.includes(staffMember?.name) ? 'Yes' : 'No';
-      
-      // Create student name display for paired students
-      let studentNameDisplay = student?.name || 'Unknown';
-      if (pairedStudent) {
-        // Show names in consistent order (lower ID first)
-        if (session.studentId < session.pairedStudentId) {
-          studentNameDisplay = `${student?.name}/${pairedStudent.name}`;
-        } else {
-          studentNameDisplay = `${pairedStudent.name}/${student?.name}`;
-        }
-      }
-      
-      return [
-        session.date,
-        studentNameDisplay,
-        student?.ratio || 'Unknown',
-        student?.lunchSchedule || 'Unknown',
-        session.sessionType,
-        session.time,
-        staffMember?.name || 'Unknown',
-        staffMember?.role || 'Unknown',
-        isTeamMember,
-        session.pairedStudentId ? 'Paired' : 'Individual',
-        session.id
-      ];
-    });
-
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ABA_Schedule_${selectedDate}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
-    console.log(`Exported ${schedule.length} sessions to CSV for ${selectedDate}`);
+  // Attendance management functions
+  const getAttendanceKey = (studentId, date) => `${studentId}-${date}`;
+  
+  const getStudentAttendance = (studentId, date) => {
+    return studentAttendance[getAttendanceKey(studentId, date)] || 'present';
   };
-
-  // Get eligible staff for a specific session
-  const getEligibleStaff = (sessionId) => {
-    const session = schedule.find(s => s.id === sessionId);
-    if (!session) return [];
-
-    const student = students.find(s => s.id === session.studentId);
-    if (!student) return [];
-
-    const isAM = session.sessionType.includes('AM');
-    const isPM = session.sessionType.includes('PM');
-    const isLunch = session.sessionType.includes('Lunch');
-
-    // Get currently assigned staff usage
-    const currentAssignments = schedule.filter(s => s.id !== sessionId); // Exclude current session
-    const staffUsage = {};
-    
-    staff.forEach(member => {
-      staffUsage[member.id] = { am: false, pm: false };
-    });
-
-    currentAssignments.forEach(s => {
-      if (s.sessionType.includes('AM')) {
-        staffUsage[s.staffId].am = true;
-      } else if (s.sessionType.includes('PM')) {
-        staffUsage[s.staffId].pm = true;
-      }
-    });
-
-    // For lunch sessions, allow more flexibility
-    if (isLunch) {
-      return staff.filter(member => 
-        member.available && 
-        (member.role === 'Teacher' || 
-         member.role === 'BCBA' || 
-         (!isAM || !staffUsage[member.id].am) && 
-         (!isPM || !staffUsage[member.id].pm))
-      ).sort((a, b) => {
-        // Prioritize team members
-        const aIsTeam = student.teamStaff.includes(a.name);
-        const bIsTeam = student.teamStaff.includes(b.name);
-        if (aIsTeam && !bIsTeam) return -1;
-        if (!aIsTeam && bIsTeam) return 1;
-        return a.name.localeCompare(b.name);
-      });
-    }
-
-    // For AM/PM sessions, prioritize team members
-    return staff.filter(member => {
-      if (!member.available) return false;
-      if (isAM && staffUsage[member.id].am) return false;
-      if (isPM && staffUsage[member.id].pm) return false;
-      
-      // Prevent same staff working AM+PM with same student
-      const studentExistingSessions = currentAssignments.filter(s => s.studentId === session.studentId);
-      const hasConflictWithSameStudent = studentExistingSessions.some(existingSession => {
-        const existingIsAM = existingSession.sessionType.includes('AM');
-        const existingIsPM = existingSession.sessionType.includes('PM');
-        
-        return existingSession.staffId === member.id && 
-               ((isAM && existingIsPM) || (isPM && existingIsAM));
-      });
-      
-      if (hasConflictWithSameStudent) return false;
-      
-      return true;
-    }).sort((a, b) => {
-      // Prioritize team members first
-      const aIsTeam = student.teamStaff.includes(a.name);
-      const bIsTeam = student.teamStaff.includes(b.name);
-      if (aIsTeam && !bIsTeam) return -1;
-      if (!aIsTeam && bIsTeam) return 1;
-      
-      // Then by role priority
-      const aPriority = staffPriority.indexOf(a.role);
-      const bPriority = staffPriority.indexOf(b.role);
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      
-      // Finally by name
-      return a.name.localeCompare(b.name);
-    });
-  };
-
-  // Handle manual assignment change
-  const handleAssignmentChange = (sessionId, newStaffId) => {
-    setPendingChanges(prev => ({
+  
+  const setStudentAttendanceState = (studentId, date, status) => {
+    const key = getAttendanceKey(studentId, date);
+    setStudentAttendance(prev => ({
       ...prev,
-      [sessionId]: newStaffId
+      [key]: status
+    }));
+    
+    console.log(`${students.find(s => s.id === studentId)?.name} attendance set to: ${status} for ${date}`);
+  };
+  
+  const isStudentAbsent = (studentId, sessionType, date) => {
+    const attendance = getStudentAttendance(studentId, date);
+    if (attendance === 'present') return false;
+    if (attendance === 'absent_full') return true;
+    if (attendance === 'absent_am' && sessionType.includes('AM')) return true;
+    if (attendance === 'absent_pm' && sessionType.includes('PM')) return true;
+    return false;
+  };
+
+  // Lunch override functions
+  const getLunchOverrideKey = (studentId, date, lunchType) => `${studentId}-${date}-${lunchType}`;
+  
+  const hasLunchOverride = (studentId, date, lunchType) => {
+    const key = getLunchOverrideKey(studentId, date, lunchType);
+    return lunchOverrides[key] === 'no_coverage';
+  };
+  
+  const setLunchOverride = (studentId, date, lunchType, override) => {
+    const key = getLunchOverrideKey(studentId, date, lunchType);
+    setLunchOverrides(prev => ({
+      ...prev,
+      [key]: override
     }));
   };
 
-  // Apply pending changes
-  const applyChanges = () => {
-    const updatedSchedule = schedule.map(session => {
-      if (pendingChanges[session.id]) {
-        return { ...session, staffId: parseInt(pendingChanges[session.id]) };
-      }
-      return session;
+  // Assignment variety functions
+  const getRecentAssignmentKey = (studentId, staffId) => `${studentId}-${staffId}`;
+  
+  const addRecentAssignment = (studentId, staffId, date) => {
+    const key = getRecentAssignmentKey(studentId, staffId);
+    setRecentAssignments(prev => {
+      const currentAssignments = prev[key] || [];
+      const updatedAssignments = [date, ...currentAssignments].slice(0, 5);
+      return { ...prev, [key]: updatedAssignments };
     });
+  };
+  
+  const getDaysSinceLastAssignment = (studentId, staffId, currentDate) => {
+    const key = getRecentAssignmentKey(studentId, staffId);
+    const assignments = recentAssignments[key];
+    if (!assignments || assignments.length === 0) return 999;
     
-    setSchedule(updatedSchedule);
-    setPendingChanges({});
-    setEditMode(false);
-    
-    // Regenerate analysis
-    const analysis = analyzeSchedule(updatedSchedule);
-    setScheduleAnalysis(analysis);
-    
-    console.log('Manual changes applied successfully');
+    const lastAssignment = assignments[0];
+    const daysDiff = Math.floor((new Date(currentDate) - new Date(lastAssignment)) / (1000 * 60 * 60 * 24));
+    return daysDiff;
+  };
+  
+  const addVarietyScore = (candidateStaff, studentId, currentDate) => {
+    return candidateStaff.map(member => {
+      const daysSince = getDaysSinceLastAssignment(studentId, member.id, currentDate);
+      const varietyScore = Math.min(daysSince / 3, 10);
+      return { ...member, varietyScore, daysSince };
+    });
   };
 
-  // Cancel edit mode
-  const cancelEdit = () => {
-    setPendingChanges({});
-    setEditMode(false);
+  // Team staff display functions
+  const toggleTeamExpansion = (studentId) => {
+    setExpandedTeams(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(studentId)) {
+        newExpanded.delete(studentId);
+      } else {
+        newExpanded.add(studentId);
+      }
+      return newExpanded;
+    });
+  };
+
+  const renderTeamStaff = (student) => {
+    const isExpanded = expandedTeams.has(student.id);
+    const teamStaff = student.teamStaff;
+    const maxDisplay = 8;
+    
+    if (teamStaff.length <= maxDisplay) {
+      return (
+        <div className="text-xs text-gray-600 max-w-xs">
+          {teamStaff.join(', ')}
+        </div>
+      );
+    }
+    
+    if (isExpanded) {
+      return (
+        <div className="text-xs text-gray-600 max-w-xs">
+          <>
+            {teamStaff.join(', ')}{' '}
+            <button
+              onClick={() => toggleTeamExpansion(student.id)}
+              className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+            >
+              show less
+            </button>
+          </>
+        </div>
+      );
+    }
+    
+    const displayedStaff = teamStaff.slice(0, maxDisplay);
+    const remainingCount = teamStaff.length - maxDisplay;
+    
+    return (
+      <div className="text-xs text-gray-600 max-w-xs">
+        {displayedStaff.join(', ')}{' '}
+        <button
+          onClick={() => toggleTeamExpansion(student.id)}
+          className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+        >
+          +{remainingCount} more
+        </button>
+      </div>
+    );
+  };
+
+  // BCBA manual assignment functions
+  const createPendingBCBAAssignment = (studentId, sessionType, date, time) => {
+    const pendingId = `pending_${studentId}_${sessionType.replace(/\s+/g, '_')}_${Date.now()}`;
+    const newPending = {
+      id: pendingId,
+      studentId,
+      sessionType,
+      date,
+      time,
+      availableBCBAs: staff.filter(s => s.role === 'BCBA' && s.available)
+    };
+    
+    setPendingBCBAAssignments(prev => [...prev, newPending]);
+    console.log(`⚠️ BCBA NEEDED: Manual selection required for ${students.find(s => s.id === studentId)?.name} - ${sessionType}`);
+    return pendingId;
+  };
+
+  const assignSelectedBCBA = (pendingId, selectedBCBAId) => {
+    if (!selectedBCBAId) return; // Prevent empty selections
+    
+    const pending = pendingBCBAAssignments.find(p => p.id === pendingId);
+    if (!pending) {
+      console.error('Pending BCBA assignment not found:', pendingId);
+      return;
+    }
+
+    const bcbaId = parseInt(selectedBCBAId);
+    const bcba = staff.find(s => s.id === bcbaId);
+    if (!bcba) {
+      console.error('BCBA not found:', selectedBCBAId);
+      return;
+    }
+
+    console.log(`🔄 ASSIGNING BCBA: ${bcba.name} to ${students.find(s => s.id === pending.studentId)?.name} - ${pending.sessionType}`);
+
+    const newSession = {
+      id: Date.now() + Math.random(),
+      studentId: pending.studentId,
+      staffId: bcbaId,
+      sessionType: pending.sessionType,
+      date: pending.date,
+      time: pending.time,
+      manualBCBAAssignment: true
+    };
+
+    // Determine if this is AM or PM session for conflict detection
+    const isAMSession = pending.sessionType.includes('AM');
+    const isPMSession = pending.sessionType.includes('PM');
+
+    // Update states in the correct order to prevent timing issues
+    setSchedule(prev => [...prev, newSession]);
+    
+    // Remove the assigned pending BCBA and update conflicts in one operation
+    setPendingBCBAAssignments(prev => {
+      const updated = prev.map(p => {
+        if (p.id === pendingId) {
+          return null; // Mark for removal
+        }
+        const otherIsAM = p.sessionType.includes('AM');
+        const otherIsPM = p.sessionType.includes('PM');
+        // Remove BCBA from conflicting time slots
+        if ((isAMSession && otherIsAM) || (isPMSession && otherIsPM)) {
+          return null;
+        }
+        return p;
+      }).filter(p => p !== null); // Remove the assigned one
+      console.log(`✅ BCBA ASSIGNED: ${bcba.name} → Remaining pending: ${updated.length}`);
+      return updated;
+    });
+  };
+
+  // Staff and Team Management Functions
+  const toggleStaffAvailability = (staffId) => {
+    setStaff(prev => prev.map(member => {
+      if (member.id === staffId) {
+        const newAvailability = !member.available;
+        console.log(`${member.name} availability changed to: ${newAvailability ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+        return { ...member, available: newAvailability };
+      }
+      return member;
+    }));
   };
 
   const addStaffToTeam = (studentId, staffName) => {
@@ -384,15 +434,53 @@ const ABAScheduler = () => {
     }));
   };
 
-  const toggleStaffAvailability = (staffId) => {
-    setStaff(prev => prev.map(member => {
-      if (member.id === staffId) {
-        const newAvailability = !member.available;
-        console.log(`${member.name} availability changed to: ${newAvailability ? 'AVAILABLE' : 'UNAVAILABLE'}`);
-        return { ...member, available: newAvailability };
-      }
-      return member;
-    }));
+  // CSV Export Function
+  const exportToCSV = () => {
+    if (schedule.length === 0) {
+      alert('No schedule data to export. Please run Auto-Assign first.');
+      return;
+    }
+
+    const headers = [
+      'Date',
+      'Student Name',
+      'Student Ratio',
+      'Session Type',
+      'Time',
+      'Staff Name',
+      'Staff Role'
+    ];
+
+    const rows = schedule.map(session => {
+      const student = students.find(s => s.id === session.studentId);
+      const staffMember = staff.find(s => s.id === session.staffId);
+      
+      return [
+        session.date,
+        student?.name || 'Unknown',
+        student?.ratio || 'Unknown',
+        session.sessionType,
+        session.time,
+        staffMember?.name || 'Unknown',
+        staffMember?.role || 'Unknown'
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ABA_Schedule_${selectedDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    console.log(`Exported ${schedule.length} sessions to CSV for ${selectedDate}`);
   };
 
   const checkThreeDayRule = (studentId, staffId, date) => {
@@ -422,6 +510,7 @@ const ABAScheduler = () => {
     setShowAnalysis(false);
     setEditMode(false);
     setPendingChanges({});
+    setPendingBCBAAssignments([]);
     console.log('Schedule cleared for', selectedDate);
   };
 
@@ -430,7 +519,6 @@ const ABAScheduler = () => {
     const amAssignments = new Set();
     const pmAssignments = new Set();
     
-    // Track which staff are assigned to AM and PM sessions (excluding lunch)
     sessions.forEach(session => {
       if (session.sessionType.includes('AM Session')) {
         amAssignments.add(session.staffId);
@@ -439,7 +527,6 @@ const ABAScheduler = () => {
       }
     });
     
-    // Find unassigned staff for AM and PM
     const unassignedAM = availableStaff.filter(member => 
       !amAssignments.has(member.id) && member.role !== 'Teacher'
     );
@@ -448,7 +535,6 @@ const ABAScheduler = () => {
       !pmAssignments.has(member.id) && member.role !== 'Teacher'
     );
     
-    // Count assignments by role
     const roleAssignments = {
       AM: { RBT: 0, BS: 0, EA: 0, MHA: 0, BCBA: 0, CC: 0 },
       PM: { RBT: 0, BS: 0, EA: 0, MHA: 0, BCBA: 0, CC: 0 }
@@ -465,35 +551,28 @@ const ABAScheduler = () => {
       }
     });
     
-    // Calculate utilization rates
     const totalAvailableStaff = availableStaff.filter(s => s.role !== 'Teacher').length;
     const amUtilization = totalAvailableStaff > 0 ? ((totalAvailableStaff - unassignedAM.length) / totalAvailableStaff * 100).toFixed(1) : 0;
     const pmUtilization = totalAvailableStaff > 0 ? ((totalAvailableStaff - unassignedPM.length) / totalAvailableStaff * 100).toFixed(1) : 0;
     
-    const analysis = {
+    return {
       unassignedAM,
       unassignedPM,
       roleAssignments,
-      utilization: {
-        AM: amUtilization,
-        PM: pmUtilization
-      },
-      totalAssigned: {
-        AM: totalAvailableStaff - unassignedAM.length,
-        PM: totalAvailableStaff - unassignedPM.length
-      },
+      utilization: { AM: amUtilization, PM: pmUtilization },
+      totalAssigned: { AM: totalAvailableStaff - unassignedAM.length, PM: totalAvailableStaff - unassignedPM.length },
       totalAvailable: totalAvailableStaff
     };
-    
-    console.log('Schedule Analysis Generated:', analysis);
-    return analysis;
   };
 
   const autoAssignSessions = () => {
     const newSchedule = [];
     const assignmentQueue = [];
     
-    // Calculate caseload sizes for each staff member (how many students they're assigned to)
+    // Clear existing pending BCBA assignments
+    setPendingBCBAAssignments([]);
+    
+    // Calculate caseload sizes for each staff member
     const staffCaseloads = {};
     staff.forEach(member => {
       const studentCount = students.filter(student => 
@@ -502,14 +581,12 @@ const ABAScheduler = () => {
       staffCaseloads[member.name] = studentCount;
     });
     
-    console.log('Prioritization System: Students with smaller teams first, staff with smaller caseloads first');
+    console.log('BCBA Manual Selection System: Creating pending assignments for BCBA coverage needs');
     
     // Create assignment queue with PRIORITY BASED ON TEAM SIZE
-    // Students with fewer team members get priority since they have fewer options
-    const processedPairs = new Set(); // Track processed paired students
+    const processedPairs = new Set();
     
     students.forEach(student => {
-      // Skip if this student was already processed as part of a pair
       if (processedPairs.has(student.id)) return;
       
       const amSessionType = student.lunchSchedule === 'First' 
@@ -520,81 +597,91 @@ const ABAScheduler = () => {
         ? 'PM (12:00-15:00)'
         : 'PM (12:30-15:00)';
 
-      // Priority = smaller team size gets higher priority (lower number = higher priority)
       const teamSize = student.teamStaff.length;
       
-      // Check if student is paired
       const isPaired = student.pairedWith !== undefined;
       let pairedStudent = null;
       
       if (isPaired) {
         pairedStudent = students.find(s => s.id === student.pairedWith);
         if (pairedStudent) {
-          // Mark both students as processed to avoid duplicate entries
           processedPairs.add(student.id);
           processedPairs.add(pairedStudent.id);
           
-          // Verify paired students have same lunch schedule
           if (student.lunchSchedule !== pairedStudent.lunchSchedule) {
             console.warn(`Paired students ${student.name} and ${pairedStudent.name} have different lunch schedules!`);
           }
         }
       }
       
-      // Check if student requires 2:1 staffing
       const requires2to1 = student.ratio === '2:1';
       
-      assignmentQueue.push({
-        studentId: student.id,
-        pairedStudentId: isPaired ? student.pairedWith : null,
-        sessionType: amSessionType,
-        priority: teamSize, // Smaller teams = higher priority
-        assigned: false,
-        isPaired: isPaired,
-        requires2to1: requires2to1,
-        staffAssignments: [] // Track multiple staff for 2:1 students
-      });
-      assignmentQueue.push({
-        studentId: student.id,
-        pairedStudentId: isPaired ? student.pairedWith : null,
-        sessionType: pmSessionType,
-        priority: teamSize,
-        assigned: false,
-        isPaired: isPaired,
-        requires2to1: requires2to1,
-        staffAssignments: [] // Track multiple staff for 2:1 students
-      });
-    });
-
-    // SORT BY PRIORITY: Students with smallest teams first
-    assignmentQueue.sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority; // Smaller team size first
+      if (!isStudentAbsent(student.id, amSessionType, selectedDate)) {
+        assignmentQueue.push({
+          studentId: student.id,
+          pairedStudentId: isPaired ? student.pairedWith : null,
+          sessionType: amSessionType,
+          priority: teamSize,
+          assigned: false,
+          isPaired: isPaired,
+          requires2to1: requires2to1,
+          staffAssignments: []
+        });
       }
-      // If same team size, sort by student ID for consistency
-      return a.studentId - b.studentId;
+      
+      if (!isStudentAbsent(student.id, pmSessionType, selectedDate)) {
+        assignmentQueue.push({
+          studentId: student.id,
+          pairedStudentId: isPaired ? student.pairedWith : null,
+          sessionType: pmSessionType,
+          priority: teamSize,
+          assigned: false,
+          isPaired: isPaired,
+          requires2to1: requires2to1,
+          staffAssignments: []
+        });
+      }
     });
 
-    console.log('Assignment Priority Order (smallest teams first):');
-    assignmentQueue.slice(0, 10).forEach(assignment => {
-      const student = students.find(s => s.id === assignment.studentId);
-      console.log(`${student.name}: ${assignment.priority} team members - ${assignment.sessionType}`);
+    // SORT BY PRIORITY: Clinical complexity first, then team constraints
+    assignmentQueue.sort((a, b) => {
+      const studentA = students.find(s => s.id === a.studentId);
+      const studentB = students.find(s => s.id === b.studentId);
+      
+      if (studentA.ratio === '2:1' && studentB.ratio !== '2:1') return -1;
+      if (studentB.ratio === '2:1' && studentA.ratio !== '2:1') return 1;
+      
+      const teamSizeA = studentA.teamStaff.length;
+      const teamSizeB = studentB.teamStaff.length;
+      
+      const avgCaseloadA = studentA.teamStaff.reduce((sum, staffName) => {
+        return sum + (staffCaseloads[staffName] || 0);
+      }, 0) / teamSizeA;
+      
+      const avgCaseloadB = studentB.teamStaff.reduce((sum, staffName) => {
+        return sum + (staffCaseloads[staffName] || 0);
+      }, 0) / teamSizeB;
+      
+      if (Math.abs(avgCaseloadA - avgCaseloadB) < 1) {
+        if (teamSizeA !== teamSizeB) {
+          return teamSizeA - teamSizeB;
+        }
+        return a.studentId - b.studentId;
+      }
+      
+      return avgCaseloadA - avgCaseloadB;
     });
 
-    // Track staff usage to prevent conflicts and optimize specialists
+    // Track staff usage
     const staffUsage = {};
     staff.forEach(member => {
       staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
     });
 
-    // MAIN ASSIGNMENT ALGORITHM - Priority-Based with Clinical Safety
-    // Pass 1-7: Team assignments with constraint relaxation (RBTs stay with teams)
-    // Pass 8+: Emergency - specialists only can work outside teams
-    
+    // MAIN ASSIGNMENT ALGORITHM with BCBA MANUAL SELECTION
     for (let pass = 1; pass <= 15; pass++) {
       console.log(`Assignment Pass ${pass}:`);
       
-      // Emergency mode for specialists only (RBTs always stay with teams)
       const useSpecialistEmergencyMode = pass >= 8;
       
       staffPriority.forEach(roleType => {
@@ -604,41 +691,39 @@ const ABAScheduler = () => {
           const student = students.find(s => s.id === assignment.studentId);
           if (!student) return;
           
-          // Get candidate staff for this role
           let candidateStaff;
           
           if (useSpecialistEmergencyMode && specialistRoles.includes(roleType)) {
-            // Emergency: Use ANY available specialist (BS, EA, MHA, BCBA), ignore team assignments
             candidateStaff = staff.filter(member => 
               member.role === roleType &&
               member.available &&
-              !lunchOnlyRoles.includes(member.role) // Exclude Directors/Clinical Trainers from AM/PM
+              !lunchOnlyRoles.includes(member.role)
             );
+            // Shuffle for variety
+            candidateStaff = shuffleArray(candidateStaff);
             if (candidateStaff.length > 0) {
               console.log(`Pass ${pass} SPECIALIST EMERGENCY: Found ${candidateStaff.length} available ${roleType}s for ${student.name} (team size: ${student.teamStaff.length})`);
             }
           } else {
-            // Normal mode: ALWAYS use team staff only (including RBTs in emergency)
             candidateStaff = student.teamStaff
               .map(name => getStaffByName(name))
               .filter(member => 
                 member && 
                 member.role === roleType &&
                 member.available &&
-                !lunchOnlyRoles.includes(member.role) // Exclude Directors/Clinical Trainers from AM/PM
+                !lunchOnlyRoles.includes(member.role)
               );
+            // Shuffle for variety
+            candidateStaff = shuffleArray(candidateStaff);
           }
           
-          // Apply constraints based on pass number  
           candidateStaff = candidateStaff.filter(member => {
-            // ALWAYS check basic time conflicts
             const isAM = assignment.sessionType.includes('AM');
             const isPM = assignment.sessionType.includes('PM');
             
             if (isAM && staffUsage[member.id].am) return false;
             if (isPM && staffUsage[member.id].pm) return false;
             
-            // ALWAYS prevent same staff working AM+PM with same student
             const studentExistingSessions = newSchedule.filter(s => s.studentId === assignment.studentId);
             const hasConflictWithSameStudent = studentExistingSessions.some(existingSession => {
               const existingIsAM = existingSession.sessionType.includes('AM');
@@ -650,7 +735,6 @@ const ABAScheduler = () => {
             
             if (hasConflictWithSameStudent) return false;
             
-            // CRITICAL: Prevent CC assignment if ANY direct service staff are available system-wide
             if (member.role === 'CC') {
               const availableDirectService = staff.filter(direct => 
                 directServiceRoles.includes(direct.role) && 
@@ -665,7 +749,6 @@ const ABAScheduler = () => {
               }
             }
             
-            // CRITICAL: Prevent Teacher assignment if ANY direct service staff OR CCs are available system-wide
             if (member.role === 'Teacher') {
               const availableNonTeachers = staff.filter(nonTeacher => 
                 ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC'].includes(nonTeacher.role) && 
@@ -680,7 +763,6 @@ const ABAScheduler = () => {
               }
             }
             
-            // CRITICAL: Prevent EA assignment if ANY RBTs are available system-wide
             if (member.role === 'EA') {
               const availableRBTs = staff.filter(rbt => 
                 rbt.role === 'RBT' && 
@@ -695,7 +777,6 @@ const ABAScheduler = () => {
               }
             }
             
-            // CRITICAL: Prevent MHA/BCBA assignment if ANY RBTs or EAs are available system-wide  
             if (['MHA', 'BCBA'].includes(member.role)) {
               const availableRBTsAndEAs = staff.filter(lower => 
                 ['RBT', 'EA'].includes(lower.role) && 
@@ -710,46 +791,76 @@ const ABAScheduler = () => {
               }
             }
             
-            // Apply pass-specific constraints
             if (pass === 1) {
-              // Pass 1: ALL constraints (strictest)
               if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
               if (specialistRoles.includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
             } 
             else if (pass === 2) {
-              // Pass 2: Relax BS limits only
               if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
               if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
             }
             else if (pass === 3) {
-              // Pass 3: Relax 3-day rule, keep some specialist limits
               if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
             }
             else if (pass === 4) {
-              // Pass 4: Relax EA/MHA/BCBA limits, restore 3-day rule
               if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
-            }
-            else if (pass >= 5) {
-              // Pass 5+: Minimal constraints
-              // Only basic time conflicts enforced
             }
             
             return true;
           });
           
-          // Assign if candidate found
-          if (candidateStaff.length > 0) {
-            // PRIORITIZE STAFF WITH SMALLER CASELOADS
-            candidateStaff.sort((a, b) => {
+          // *** BCBA MANUAL SELECTION FIX: Check if BCBA assignment needed ***
+          if (roleType === 'BCBA' && candidateStaff.length > 0) {
+            // Instead of assigning directly, create pending BCBA assignment for manual selection
+            const pendingId = createPendingBCBAAssignment(
+              assignment.studentId, 
+              assignment.sessionType, 
+              selectedDate, 
+              sessionTypes[assignment.sessionType]
+            );
+            
+            // Mark as "assigned" to remove from queue, but no actual session created yet
+            assignment.assigned = true;
+            assignment.pendingBCBAId = pendingId; // Track the pending assignment
+            
+            // Handle paired students - they share the same BCBA assignment
+            if (assignment.isPaired && assignment.pairedStudentId) {
+              const pairedAssignment = assignmentQueue.find(a => 
+                a.studentId === assignment.pairedStudentId && 
+                a.sessionType === assignment.sessionType &&
+                !a.assigned
+              );
+              if (pairedAssignment) {
+                pairedAssignment.assigned = true;
+                pairedAssignment.pendingBCBAId = pendingId; // Same pending assignment
+              }
+            }
+            
+            console.log(`Pass ${pass}: ⚠️ BCBA MANUAL SELECTION REQUIRED - ${student.name} - ${assignment.sessionType} (Pending ID: ${pendingId})`);
+            return; // Skip normal assignment logic for BCBAs
+          }
+          
+          // Assign if candidate found (NON-BCBA assignments)
+          if (candidateStaff.length > 0 && roleType !== 'BCBA') {
+            // Add variety scoring to promote rotation
+            const staffWithVariety = addVarietyScore(candidateStaff, assignment.studentId, selectedDate);
+            
+            // PRIORITIZE STAFF WITH VARIETY AND SMALLER CASELOADS
+            staffWithVariety.sort((a, b) => {
               const caseloadA = staffCaseloads[a.name] || 0;
               const caseloadB = staffCaseloads[b.name] || 0;
               
-              // If caseloads are equal, sort by name for consistency
-              if (caseloadA === caseloadB) {
-                return a.name.localeCompare(b.name);
+              // Variety bonus (0-10) + caseload penalty (weighted)
+              const scoreA = a.varietyScore - (caseloadA * 0.3);
+              const scoreB = b.varietyScore - (caseloadB * 0.3);
+              
+              // Higher score = better choice (more variety, smaller caseload)
+              if (Math.abs(scoreA - scoreB) > 0.5) {
+                return scoreB - scoreA; // Sort by score descending
               }
               
-              return caseloadA - caseloadB; // Smaller caseload first
+              // If scores are very close, add small random factor for variety
+              return Math.random() - 0.5;
             });
             
             // Handle 2:1 students (need two staff members)
@@ -912,261 +1023,546 @@ const ABAScheduler = () => {
       const remainingUnassigned = assignmentQueue.filter(assignment => !assignment.assigned).length;
       console.log(`After Pass ${pass}: ${remainingUnassigned} sessions still unassigned`);
       
-      // Log team size distribution of unassigned students
-      if (remainingUnassigned > 0) {
-        const unassignedTeamSizes = assignmentQueue
-          .filter(assignment => !assignment.assigned)
-          .map(assignment => {
-            const student = students.find(s => s.id === assignment.studentId);
-            return student.teamStaff.length;
-          });
-        const avgTeamSize = (unassignedTeamSizes.reduce((a, b) => a + b, 0) / unassignedTeamSizes.length).toFixed(1);
-        console.log(`Unassigned students have average team size: ${avgTeamSize}`);
-      }
-      
       if (remainingUnassigned === 0) {
         console.log(`✅ ALL SESSIONS ASSIGNED after Pass ${pass} using priority-based assignment!`);
         break;
       }
       
-      // If we still have unassigned sessions after pass 15, log detailed analysis
       if (pass === 15 && remainingUnassigned > 0) {
         console.warn(`⚠️ CRITICAL: ${remainingUnassigned} sessions could not be assigned after 15 passes!`);
-        
-        const unassignedDetails = assignmentQueue
-          .filter(assignment => !assignment.assigned)
-          .map(assignment => {
-            const student = students.find(s => s.id === assignment.studentId);
-            return `${student?.name} (team: ${student.teamStaff.length}, ${assignment.sessionType})`;
-          });
-        console.warn('Unassigned sessions with team sizes:', unassignedDetails);
       }
     }
 
-    // EMERGENCY FALLBACK: Use Teachers for AM/PM if absolutely necessary
-    const stillUnassigned = assignmentQueue.filter(assignment => !assignment.assigned);
-    if (stillUnassigned.length > 0) {
-      console.warn(`EMERGENCY: ${stillUnassigned.length} sessions need Teacher assignment`);
-      
-      stillUnassigned.forEach(assignment => {
-        const student = students.find(s => s.id === assignment.studentId);
-        if (!student) return;
-        
-        const teacherStaff = staff.filter(member => 
-          member.role === 'Teacher' && 
-          member.available
-        );
-        
-        const isAM = assignment.sessionType.includes('AM');
-        const isPM = assignment.sessionType.includes('PM');
-        
-        const availableTeachers = teacherStaff.filter(teacher => {
-          if (isAM && staffUsage[teacher.id].am) return false;
-          if (isPM && staffUsage[teacher.id].pm) return false;
-          return true;
-        });
-        
-        if (availableTeachers.length > 0) {
-          const selectedTeacher = availableTeachers[0];
-          
-          const newSession = {
-            id: Date.now() + Math.random(),
-            studentId: assignment.studentId,
-            staffId: selectedTeacher.id,
-            sessionType: assignment.sessionType,
-            date: selectedDate,
-            time: sessionTypes[assignment.sessionType]
-          };
-          
-          newSchedule.push(newSession);
-          assignment.assigned = true;
-          
-          if (isAM) staffUsage[selectedTeacher.id].am = true;
-          if (isPM) staffUsage[selectedTeacher.id].pm = true;
-          staffUsage[selectedTeacher.id].sessions += 1;
-        }
-      });
-    }
-
-    // LUNCH COVERAGE ASSIGNMENT
+    // COMPLETELY REWRITTEN LUNCH COVERAGE LOGIC
+    console.log('Starting lunch coverage assignment...');
     const lunchAssignments = [];
     
+    // Reset lunch coverage tracking
+    staff.forEach(member => {
+      staffUsage[member.id].lunchCoverage = 0;
+    });
+    
+    // Create a map to track which students actually need which lunch periods
+    const studentLunchNeeds = {};
+    
     students.forEach(student => {
-      // Skip if this student is the secondary member of a pair (lunch is shared)
+      const isAbsentFull = getStudentAttendance(student.id, selectedDate) === 'absent_full';
+      const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
+      const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
+      
+      // Find the student's actual scheduled sessions OR pending BCBA assignments
+      const amSession = newSchedule.find(s => s.studentId === student.id && s.sessionType.includes('AM'));
+      const pmSession = newSchedule.find(s => s.studentId === student.id && s.sessionType.includes('PM'));
+      
+      // *** ALSO CHECK FOR PENDING BCBA ASSIGNMENTS ***
+      const pendingAM = pendingBCBAAssignments.find(p => p.studentId === student.id && p.sessionType.includes('AM'));
+      const pendingPM = pendingBCBAAssignments.find(p => p.studentId === student.id && p.sessionType.includes('PM'));
+      
+      // Consider both actual sessions AND pending BCBA assignments for lunch needs calculation
+      const hasAMCoverage = amSession || pendingAM;
+      const hasPMCoverage = pmSession || pendingPM;
+      
+      let needs1130 = false;
+      let needs1200 = false;
+      
+      if (!isAbsentFull) {
+        if (student.lunchSchedule === 'First') {
+          // First lunch students (eat 11:30-12:00)
+          // Need supervision 11:30-12:00 if they're present and transitioning
+          needs1130 = (hasAMCoverage && !isAbsentAM) || (hasPMCoverage && !isAbsentPM);
+          
+          // Only need 12:00-12:30 supervision if PM starts at 12:30 (gap coverage)
+          needs1200 = hasPMCoverage && !isAbsentPM && 
+            ((pmSession && pmSession.sessionType === 'PM (12:30-15:00)') || 
+             (pendingPM && pendingPM.sessionType === 'PM (12:30-15:00)'));
+          
+          console.log(`${student.name} (First Lunch): AM=${amSession?.sessionType || pendingAM?.sessionType}, PM=${pmSession?.sessionType || pendingPM?.sessionType}, needs 11:30=${needs1130}, needs 12:00=${needs1200}`);
+        } else {
+          // Second lunch students (eat 12:00-12:30)  
+          // Need supervision 11:30-12:00 only if AM ends at 11:30 (gap before lunch)
+          needs1130 = hasAMCoverage && !isAbsentAM && 
+            ((amSession && amSession.sessionType === 'AM Session (8:45-11:30)') || 
+             (pendingAM && pendingAM.sessionType === 'AM Session (8:45-11:30)'));
+          
+          // Need supervision 12:00-12:30 if PM is present (lunch time)
+          needs1200 = hasPMCoverage && !isAbsentPM;
+          
+          console.log(`${student.name} (Second Lunch): AM=${amSession?.sessionType || pendingAM?.sessionType}, PM=${pmSession?.sessionType || pendingPM?.sessionType}, needs 11:30=${needs1130}, needs 12:00=${needs1200}`);
+        }
+      }
+      
+      studentLunchNeeds[student.id] = { needs1130, needs1200 };
+    });
+    
+    // Assign lunch coverage based on actual needs
+    students.forEach(student => {
+      // Skip paired students (handle primary only)
       if (student.pairedWith && student.id > student.pairedWith) return;
       
-      let needsLunch1130 = false;
-      let needsLunch1200 = false;
-
-      if (student.lunchSchedule === 'First') {
-        needsLunch1130 = true;
-        // Check if PM starts at 12:30 (needs 12:00-12:30 coverage)
-        const pmSession = newSchedule.find(s => 
-          s.studentId === student.id && s.sessionType.includes('PM')
-        );
-        needsLunch1200 = pmSession && pmSession.sessionType === 'PM (12:30-15:00)';
-      } else {
-        // Second lunch students
-        const amSession = newSchedule.find(s => 
-          s.studentId === student.id && s.sessionType.includes('AM')
-        );
-        needsLunch1130 = !amSession || amSession.sessionType === 'AM Session (8:45-11:30)';
-        needsLunch1200 = true;
-      }
-
-      // Find available lunch coverage staff (1:3 ratio - one staff can cover up to 3 students/pairs)
-      if (needsLunch1130) {
-        // First try regular lunch staff (Teachers, BCBAs, unscheduled staff)
-        let lunchStaff = staff.filter(member => 
-          (member.role === 'Teacher' || member.role === 'BCBA' || !staffUsage[member.id].am) &&
+      const needs = studentLunchNeeds[student.id];
+      if (!needs) return;
+      
+      // Assign 11:30-12:00 coverage if needed
+      if (needs.needs1130) {
+        let selectedStaff = null;
+        // TIER 1: RBT, EA, MHA (direct service staff, not scheduled for AM)
+        let availableStaff = staff.filter(member => 
           member.available &&
-          !lunchOnlyRoles.includes(member.role) &&
-          staffUsage[member.id].lunchCoverage < 3  // Allow up to 3 students per staff
+          ['RBT', 'EA', 'MHA'].includes(member.role) &&
+          !staffUsage[member.id].am &&
+          staffUsage[member.id].lunchCoverage < 3
         );
-        
-        // If no regular staff available, use Directors/Clinical Trainers as last resort
-        if (lunchStaff.length === 0) {
-          lunchStaff = staff.filter(member => 
-            lunchOnlyRoles.includes(member.role) &&
+        // Shuffle to randomize starting point for fairness
+        for (let i = availableStaff.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+        }
+        availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+        if (availableStaff.length > 0) {
+          selectedStaff = availableStaff[0];
+          console.log(`Lunch 1 - TIER 1 (${selectedStaff.role}): ${selectedStaff.name}`);
+        }
+        // TIER 2: BCBAs not scheduled for AM
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
             member.available &&
+            member.role === 'BCBA' &&
+            !staffUsage[member.id].am &&
             staffUsage[member.id].lunchCoverage < 3
           );
-          if (lunchStaff.length > 0) {
-            console.log(`LUNCH EMERGENCY: Using ${lunchStaff[0].role} ${lunchStaff[0].name} for lunch coverage`);
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 1 - TIER 2 (BCBA): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 3: Teachers
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Teacher' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 1 - TIER 3 (Teacher): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 4: CCs
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'CC' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 1 - TIER 4 (CC): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 5: Clinical Trainer
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Clinical Trainer' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 1 - TIER 5 (Clinical Trainer): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 6: Director (absolute last resort)
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Director' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 1 - TIER 6 (Director): ${selectedStaff.name}`);
           }
         }
         
-        if (lunchStaff.length > 0) {
-          const selectedLunchStaff = lunchStaff[0];
+        if (selectedStaff) {
+          // Create session for primary student
+          lunchAssignments.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            pairedStudentId: student.pairedWith || null,
+            staffId: selectedStaff.id,
+            sessionType: 'Lunch 1 (11:30-12:00)',
+            date: selectedDate,
+            time: '11:30-12:00'
+          });
           
-          // For 2:1 students, assign exactly 1 staff for lunch (1:1 ratio during lunch)
-          // But that staff member becomes dedicated/exclusive to the 2:1 student
-          const staffForLunch = [selectedLunchStaff];
-          
-          staffForLunch.forEach((staffMember, index) => {
-            const lunchSession = {
-              id: Date.now() + Math.random() + (index * 0.01),
-              studentId: student.id,
-              pairedStudentId: student.pairedWith || null,
-              staffId: staffMember.id,
+          // Create session for paired student if applicable
+          if (student.pairedWith) {
+            lunchAssignments.push({
+              id: Date.now() + Math.random() + 0.1,
+              studentId: student.pairedWith,
+              pairedStudentId: student.id,
+              staffId: selectedStaff.id,
               sessionType: 'Lunch 1 (11:30-12:00)',
               date: selectedDate,
-              time: '11:30-12:00',
-              is2to1: student.ratio === '2:1',
-              staffCount: staffForLunch.length
-            };
-            lunchAssignments.push(lunchSession);
+              time: '11:30-12:00'
+            });
+          }
+          
+          // Update coverage count
+          const studentsServed = student.pairedWith ? 2 : 1;
+          staffUsage[selectedStaff.id].lunchCoverage += studentsServed;
+          console.log(`Assigned lunch 1: ${selectedStaff.role} ${selectedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''} - now covering ${staffUsage[selectedStaff.id].lunchCoverage} students`);
+        } else {
+          // *** FORCE DIRECTOR ASSIGNMENT - NO "NEEDED" LUNCH SESSIONS ALLOWED ***
+          console.warn(`⚠️ FORCING Director assignment for lunch 1 coverage - ${student.name}`);
+          
+          // Find ANY available Director/Clinical Trainer regardless of current workload
+          const emergencyStaff = staff.filter(member => 
+            member.available &&
+            ['Director', 'Clinical Trainer'].includes(member.role)
+          ).sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          
+          if (emergencyStaff.length > 0) {
+            const forceAssignedStaff = emergencyStaff[0];
             
-            // If student is paired, create lunch session for paired student too
+            // Create session for primary student
+            lunchAssignments.push({
+              id: Date.now() + Math.random(),
+              studentId: student.id,
+              pairedStudentId: student.pairedWith || null,
+              staffId: forceAssignedStaff.id,
+              sessionType: 'Lunch 1 (11:30-12:00)',
+              date: selectedDate,
+              time: '11:30-12:00'
+            });
+            
+            // Create session for paired student if applicable
             if (student.pairedWith) {
-              const pairedLunchSession = {
-                id: Date.now() + Math.random() + (index * 0.01) + 0.1,
+              lunchAssignments.push({
+                id: Date.now() + Math.random() + 0.1,
                 studentId: student.pairedWith,
                 pairedStudentId: student.id,
-                staffId: staffMember.id,
+                staffId: forceAssignedStaff.id,
                 sessionType: 'Lunch 1 (11:30-12:00)',
                 date: selectedDate,
-                time: '11:30-12:00',
-                is2to1: student.ratio === '2:1',
-                staffCount: staffForLunch.length
-              };
-              lunchAssignments.push(pairedLunchSession);
+                time: '11:30-12:00'
+              });
             }
             
-            // For 2:1 students, mark staff as fully occupied (can't cover other students)
-            if (student.ratio === '2:1') {
-              staffUsage[staffMember.id].lunchCoverage = 3; // Max out their coverage
-            } else {
-              staffUsage[staffMember.id].lunchCoverage += 1;
-            }
-          });
+            const studentsServed = student.pairedWith ? 2 : 1;
+            staffUsage[forceAssignedStaff.id].lunchCoverage += studentsServed;
+            console.log(`🚨 EMERGENCY LUNCH 1 ASSIGNMENT: ${forceAssignedStaff.role} ${forceAssignedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''}`);
+          } else {
+            console.error(`🚨 CRITICAL: NO DIRECTORS AVAILABLE for emergency lunch 1 coverage - ${student.name}`);
+          }
         }
       }
-
-      if (needsLunch1200) {
-        // First try regular lunch staff (Teachers, BCBAs, unscheduled staff)
-        let lunchStaff = staff.filter(member => 
-          (member.role === 'Teacher' || member.role === 'BCBA' || !staffUsage[member.id].pm) &&
+      
+      // Assign 12:00-12:30 coverage if needed
+      if (needs.needs1200) {
+        let selectedStaff = null;
+        // TIER 1: RBT, EA, MHA (direct service staff, not scheduled for PM)
+        let availableStaff = staff.filter(member => 
           member.available &&
-          !lunchOnlyRoles.includes(member.role) &&
-          staffUsage[member.id].lunchCoverage < 3  // Allow up to 3 students per staff
+          ['RBT', 'EA', 'MHA'].includes(member.role) &&
+          !staffUsage[member.id].pm &&
+          staffUsage[member.id].lunchCoverage < 3
         );
-        
-        // If no regular staff available, use Directors/Clinical Trainers as last resort
-        if (lunchStaff.length === 0) {
-          lunchStaff = staff.filter(member => 
-            lunchOnlyRoles.includes(member.role) &&
+        for (let i = availableStaff.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+        }
+        availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+        if (availableStaff.length > 0) {
+          selectedStaff = availableStaff[0];
+          console.log(`Lunch 2 - TIER 1 (${selectedStaff.role}): ${selectedStaff.name}`);
+        }
+        // TIER 2: BCBAs not scheduled for PM
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
             member.available &&
+            member.role === 'BCBA' &&
+            !staffUsage[member.id].pm &&
             staffUsage[member.id].lunchCoverage < 3
           );
-          if (lunchStaff.length > 0) {
-            console.log(`LUNCH EMERGENCY: Using ${lunchStaff[0].role} ${lunchStaff[0].name} for lunch coverage`);
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 2 - TIER 2 (BCBA): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 3: Teachers
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Teacher' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 2 - TIER 3 (Teacher): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 4: CCs
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'CC' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 2 - TIER 4 (CC): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 5: Clinical Trainer
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Clinical Trainer' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 2 - TIER 5 (Clinical Trainer): ${selectedStaff.name}`);
+          }
+        }
+        // TIER 6: Director (absolute last resort)
+        if (!selectedStaff) {
+          availableStaff = staff.filter(member => 
+            member.available &&
+            member.role === 'Director' &&
+            staffUsage[member.id].lunchCoverage < 3
+          );
+          for (let i = availableStaff.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
+          }
+          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          if (availableStaff.length > 0) {
+            selectedStaff = availableStaff[0];
+            console.log(`Lunch 2 - TIER 6 (Director): ${selectedStaff.name}`);
           }
         }
         
-        if (lunchStaff.length > 0) {
-          const selectedLunchStaff = lunchStaff[0];
+        if (selectedStaff) {
+          // Create session for primary student
+          lunchAssignments.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            pairedStudentId: student.pairedWith || null,
+            staffId: selectedStaff.id,
+            sessionType: 'Lunch 2 (12:00-12:30)',
+            date: selectedDate,
+            time: '12:00-12:30'
+          });
           
-          // For 2:1 students, assign exactly 1 staff for lunch (1:1 ratio during lunch)
-          // But that staff member becomes dedicated/exclusive to the 2:1 student
-          const staffForLunch = [selectedLunchStaff];
-          
-          staffForLunch.forEach((staffMember, index) => {
-            const lunchSession = {
-              id: Date.now() + Math.random() + (index * 0.01),
-              studentId: student.id,
-              pairedStudentId: student.pairedWith || null,
-              staffId: staffMember.id,
+          // Create session for paired student if applicable
+          if (student.pairedWith) {
+            lunchAssignments.push({
+              id: Date.now() + Math.random() + 0.1,
+              studentId: student.pairedWith,
+              pairedStudentId: student.id,
+              staffId: selectedStaff.id,
               sessionType: 'Lunch 2 (12:00-12:30)',
               date: selectedDate,
-              time: '12:00-12:30',
-              is2to1: student.ratio === '2:1',
-              staffCount: staffForLunch.length
-            };
-            lunchAssignments.push(lunchSession);
+              time: '12:00-12:30'
+            });
+          }
+          
+          // Update coverage count
+          const studentsServed = student.pairedWith ? 2 : 1;
+          staffUsage[selectedStaff.id].lunchCoverage += studentsServed;
+          console.log(`Assigned lunch 2: ${selectedStaff.role} ${selectedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''} - now covering ${staffUsage[selectedStaff.id].lunchCoverage} students`);
+        } else {
+          // *** FORCE DIRECTOR ASSIGNMENT - NO "NEEDED" LUNCH SESSIONS ALLOWED ***
+          console.warn(`⚠️ FORCING Director assignment for lunch 2 coverage - ${student.name}`);
+          
+          // Find ANY available Director/Clinical Trainer regardless of current workload
+          const emergencyStaff = staff.filter(member => 
+            member.available &&
+            ['Director', 'Clinical Trainer'].includes(member.role)
+          ).sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
+          
+          if (emergencyStaff.length > 0) {
+            const forceAssignedStaff = emergencyStaff[0];
             
-            // If student is paired, create lunch session for paired student too
+            // Create session for primary student
+            lunchAssignments.push({
+              id: Date.now() + Math.random(),
+              studentId: student.id,
+              pairedStudentId: student.pairedWith || null,
+              staffId: forceAssignedStaff.id,
+              sessionType: 'Lunch 2 (12:00-12:30)',
+              date: selectedDate,
+              time: '12:00-12:30'
+            });
+            
+            // Create session for paired student if applicable
             if (student.pairedWith) {
-              const pairedLunchSession = {
-                id: Date.now() + Math.random() + (index * 0.01) + 0.1,
+              lunchAssignments.push({
+                id: Date.now() + Math.random() + 0.1,
                 studentId: student.pairedWith,
                 pairedStudentId: student.id,
-                staffId: staffMember.id,
+                staffId: forceAssignedStaff.id,
                 sessionType: 'Lunch 2 (12:00-12:30)',
                 date: selectedDate,
-                time: '12:00-12:30',
-                is2to1: student.ratio === '2:1',
-                staffCount: staffForLunch.length
-              };
-              lunchAssignments.push(pairedLunchSession);
+                time: '12:00-12:30'
+              });
             }
             
-            // For 2:1 students, mark staff as fully occupied (can't cover other students)
-            if (student.ratio === '2:1') {
-              staffUsage[staffMember.id].lunchCoverage = 3; // Max out their coverage
-            } else {
-              staffUsage[staffMember.id].lunchCoverage += 1;
-            }
-          });
+            const studentsServed = student.pairedWith ? 2 : 1;
+            staffUsage[forceAssignedStaff.id].lunchCoverage += studentsServed;
+            console.log(`🚨 EMERGENCY LUNCH 2 ASSIGNMENT: ${forceAssignedStaff.role} ${forceAssignedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''}`);
+          } else {
+            console.error(`🚨 CRITICAL: NO DIRECTORS AVAILABLE for emergency lunch 2 coverage - ${student.name}`);
+          }
         }
       }
     });
 
+    console.log(`Created ${lunchAssignments.length} lunch assignments`);
+    
+    // Store lunch needs for display logic
+    const globalStudentLunchNeeds = studentLunchNeeds;
+    
     // Combine all assignments
     const allAssignments = [...newSchedule, ...lunchAssignments];
+    
+    // *** FINAL CLEANUP: Convert ANY remaining "NEEDED" sessions to BCBA manual selection ***
+    // This ensures NO gaps remain in the published schedule
+    console.log('Final cleanup: Converting any remaining "NEEDED" sessions to BCBA manual selection...');
+    
+    let cleanupCount = 0;
+    
+    students.forEach(student => {
+      if (student.pairedWith && student.id > student.pairedWith) return; // Skip paired duplicates
+      
+      const currentAttendance = getStudentAttendance(student.id, selectedDate);
+      if (currentAttendance === 'absent_full') return; // Skip fully absent students
+      
+      // Get lunch needs for this student
+      const lunchNeeds = globalStudentLunchNeeds[student.id] || { needs1130: false, needs1200: false };
+      
+      const sessionTypes = [
+        { 
+          type: student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)', 
+          display: 'AM Session',
+          shouldHave: !isStudentAbsent(student.id, 'AM Session', selectedDate)
+        },
+        { 
+          type: 'Lunch 1 (11:30-12:00)', 
+          display: 'Lunch 1',
+          shouldHave: lunchNeeds.needs1130
+        },
+        { 
+          type: 'Lunch 2 (12:00-12:30)', 
+          display: 'Lunch 2',
+          shouldHave: lunchNeeds.needs1200
+        },
+        { 
+          type: student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)', 
+          display: 'PM Session',
+          shouldHave: !isStudentAbsent(student.id, 'PM Session', selectedDate)
+        }
+      ];
+      
+      sessionTypes.forEach(sessionInfo => {
+        if (!sessionInfo.shouldHave) return; // Skip if student shouldn't have this session
+        
+        // Check if this session is already assigned
+        const existingSession = allAssignments.find(s => 
+          s.studentId === student.id && s.sessionType === sessionInfo.type
+        );
+        
+        // Check if there's already a pending BCBA assignment for this session
+        const existingPending = pendingBCBAAssignments.find(p => 
+          p.studentId === student.id && p.sessionType === sessionInfo.type
+        );
+        
+        // If no existing assignment and no pending BCBA assignment, create one
+        if (!existingSession && !existingPending) {
+          const pendingId = createPendingBCBAAssignment(
+            student.id,
+            sessionInfo.type,
+            selectedDate,
+            sessionTypes[sessionInfo.type]
+          );
+          
+          cleanupCount++;
+          console.log(`Final cleanup: Added BCBA manual selection for ${student.name} - ${sessionInfo.display}`);
+          
+          // Handle paired students - create separate pending assignment
+          if (student.pairedWith) {
+            const pairedPendingId = createPendingBCBAAssignment(
+              student.pairedWith,
+              sessionInfo.type,
+              selectedDate,
+              sessionTypes[sessionInfo.type]
+            );
+            cleanupCount++;
+            console.log(`Final cleanup: Added BCBA manual selection for paired student - ${sessionInfo.display}`);
+          }
+        }
+      });
+    });
+    
+    console.log(`Final cleanup complete: ${cleanupCount} additional BCBA manual selections created`);
+
     setSchedule(allAssignments);
     
     // Generate and set schedule analysis
-    const analysis = analyzeSchedule(allAssignments);
+    const analysis = analyzeSchedule(newSchedule);
     setScheduleAnalysis(analysis);
     setShowAnalysis(true);
     
-    // Reset edit mode when new schedule is generated
-    setEditMode(false);
-    setPendingChanges({});
-    
-    // Update assignment history for 3-day rule tracking
-    const newHistory = allAssignments.map(session => ({
+    // Update assignment history
+    const newHistory = newSchedule.map(session => ({
       date: selectedDate,
       studentId: session.studentId,
       staffId: session.staffId,
@@ -1174,6 +1570,52 @@ const ABAScheduler = () => {
     }));
     
     setAssignmentHistory(prev => [...prev, ...newHistory]);
+    
+    // Update rotation tracking
+    newSchedule.forEach(session => {
+      if (session.sessionType.includes('AM Session') || session.sessionType.includes('PM')) {
+        addRecentAssignment(session.studentId, session.staffId, selectedDate);
+      }
+    });
+    
+    // *** FINAL BCBA MANUAL SELECTION STEP ***
+    // Convert any remaining unassigned sessions to pending BCBA assignments
+    const finalUnassigned = assignmentQueue.filter(assignment => !assignment.assigned);
+    
+    if (finalUnassigned.length > 0) {
+      console.log(`Converting ${finalUnassigned.length} remaining unassigned sessions to BCBA manual selection...`);
+      
+      finalUnassigned.forEach(assignment => {
+        const student = students.find(s => s.id === assignment.studentId);
+        
+        const pendingId = createPendingBCBAAssignment(
+          assignment.studentId, 
+          assignment.sessionType, 
+          selectedDate, 
+          sessionTypes[assignment.sessionType]
+        );
+        
+        assignment.assigned = true;
+        assignment.pendingBCBAId = pendingId;
+        
+        // Handle paired students - they share the same BCBA assignment
+        if (assignment.isPaired && assignment.pairedStudentId) {
+          const pairedAssignment = assignmentQueue.find(a => 
+            a.studentId === assignment.pairedStudentId && 
+            a.sessionType === assignment.sessionType &&
+            !a.assigned
+          );
+          if (pairedAssignment) {
+            pairedAssignment.assigned = true;
+            pairedAssignment.pendingBCBAId = pendingId;
+          }
+        }
+        
+        console.log(`Final BCBA Manual Selection: ${student?.name} - ${assignment.sessionType} (Pending ID: ${pendingId})`);
+      });
+    }
+    
+    console.log(`✅ SCHEDULE GENERATED: ${newSchedule.length} total sessions, ${pendingBCBAAssignments.length} pending BCBA selections`);
   };
 
   const getSessionsForDate = () => {
@@ -1188,84 +1630,72 @@ const ABAScheduler = () => {
   const getStudentScheduleRow = (student) => {
     const todaySessions = getSessionsForDate();
     const studentSessions = todaySessions.filter(s => s.studentId === student.id);
+    
+    // Check for pending BCBA assignments for this student
+    const pendingBCBAs = pendingBCBAAssignments.filter(p => p.studentId === student.id);
 
     const amSession = studentSessions.find(s => 
       s.sessionType === 'AM Session (8:45-11:30)' || s.sessionType === 'AM Session (8:45-12:00)'
     );
     const lunch1 = studentSessions.find(s => s.sessionType === 'Lunch 1 (11:30-12:00)');
     const lunch2 = studentSessions.find(s => s.sessionType === 'Lunch 2 (12:00-12:30)');
-    const extendedLunch = studentSessions.find(s => s.sessionType === 'Extended Lunch Coverage (11:30-12:30)');
     const pmSession = studentSessions.find(s => 
       s.sessionType === 'PM (12:00-15:00)' || s.sessionType === 'PM (12:30-15:00)'
     );
+    
+    // Check for pending BCBA assignments
+    const pendingAM = pendingBCBAs.find(p => p.sessionType.includes('AM'));
+    const pendingPM = pendingBCBAs.find(p => p.sessionType.includes('PM'));
 
-    let needsLunch1130 = false;
-    let needsLunch1200 = false;
+    // *** ATTENDANCE DISPLAY FIX: Calculate attendance status for each session type ***
+    const isAbsentFull = getStudentAttendance(student.id, selectedDate) === 'absent_full';
+    const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
+    const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
 
-    if (student.lunchSchedule === 'First') {
-      if (extendedLunch) {
-        needsLunch1130 = false;
-        needsLunch1200 = false;
-      } else {
-        needsLunch1130 = true;
-        needsLunch1200 = pmSession && pmSession.sessionType === 'PM (12:30-15:00)';
-      }
-    } else {
-      needsLunch1130 = !amSession || amSession.sessionType === 'AM Session (8:45-11:30)';
-      needsLunch1200 = !pmSession || pmSession.sessionType === 'PM (12:30-15:00)';
-    }
-
-    const getSessionDisplay = (session, includeTime = true) => {
-      if (!session) return 'NEEDED';
-      
-      // Handle pending changes
-      const effectiveStaffId = pendingChanges[session.id] ? parseInt(pendingChanges[session.id]) : session.staffId;
-      const staffMember = staff.find(s => s.id === effectiveStaffId);
-      
-      // Handle paired students - show both names
-      let studentDisplay = student.name;
-      if (session.pairedStudentId) {
-        const pairedStudent = students.find(s => s.id === session.pairedStudentId);
-        if (pairedStudent) {
-          // Show names in consistent order (lower ID first)
-          if (session.studentId < session.pairedStudentId) {
-            studentDisplay = `${student.name}/${pairedStudent.name}`;
-          } else {
-            studentDisplay = `${pairedStudent.name}/${student.name}`;
-          }
+    const renderSessionCell = (session, pendingBCBA = null, isLunchPeriod = false, lunchNeeded = true, sessionTypeForAttendance = null) => {
+      // *** ATTENDANCE CHECK FIRST: Check attendance before anything else ***
+      if (sessionTypeForAttendance) {
+        if (isAbsentFull || 
+            (sessionTypeForAttendance === 'AM' && isAbsentAM) ||
+            (sessionTypeForAttendance === 'PM' && isAbsentPM)) {
+          return {
+            display: 'ABSENT',
+            class: 'bg-gray-200 text-gray-600'
+          };
         }
       }
-      
-      // Handle 2:1 students - get all staff for this student/session
-      let staffDisplay = '';
-      if (session.is2to1) {
-        const allSessionsForStudent = getSessionsForDate().filter(s => 
-          s.studentId === session.studentId && 
-          s.sessionType === session.sessionType
-        );
-        const staffNames = allSessionsForStudent.map(s => {
-          const staffMember = staff.find(sm => sm.id === s.staffId);
-          return staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
-        });
-        staffDisplay = staffNames.join(' + ');
-      } else {
-        staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
-      }
-      
-      if (!includeTime) return session.is2to1 ? `${staffDisplay} (${studentDisplay})` : staffDisplay;
-      
-      let timeDisplay = '';
-      if (session.sessionType.includes('AM Session')) {
-        timeDisplay = session.sessionType.includes('12:00') ? '(12:00)' : '(11:30)';
-      } else if (session.sessionType.includes('PM')) {
-        timeDisplay = session.sessionType.includes('12:30') ? '(12:30)' : '(12:00)';
-      }
-      
-      return `${staffDisplay} ${timeDisplay}`;
-    };
 
-    const renderSessionCell = (session, needed, timeIncluded = true) => {
-      if (!needed) {
+      // Check for pending BCBA assignment second
+      // Only show dropdown if there is no assigned session for this slot
+      if (!session && pendingBCBA) {
+        return {
+          display: (
+            <div className="text-xs">
+              <div className="text-purple-700 font-medium mb-1">Clinician needed for coverage</div>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    assignSelectedBCBA(pendingBCBA.id, e.target.value);
+                  }
+                }}
+                className="text-xs p-1 rounded border bg-white w-full"
+                defaultValue=""
+              >
+                <option value="">Select BCBA...</option>
+                {pendingBCBA.availableBCBAs.map(bcba => (
+                  <option key={bcba.id} value={bcba.id}>
+                    BCBA {bcba.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ),
+          class: 'bg-purple-100 text-purple-700 border border-purple-300'
+        };
+      }
+      
+      // For lunch periods, check if coverage is actually needed
+      if (isLunchPeriod && !lunchNeeded) {
         return {
           display: 'X',
           class: 'bg-gray-100 text-gray-500'
@@ -1273,52 +1703,77 @@ const ABAScheduler = () => {
       }
       
       if (!session) {
+        // For lunch, only show a staff name if a lunch session is actually assigned
+        // If no session, show 'NEEDED' (or blank), not a default staff
+        if (isLunchPeriod) {
+          return {
+            display: 'NEEDED',
+            class: 'bg-red-100 text-red-700'
+          };
+        }
         return {
           display: 'NEEDED',
-          class: session && session.sessionType.includes('Lunch') ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+          class: 'bg-red-100 text-red-700'
         };
       }
 
-      // Use green for lunch sessions, blue for AM/PM sessions
-      const isLunchSession = session.sessionType.includes('Lunch');
-      const baseClass = pendingChanges[session.id] 
-        ? 'bg-orange-100 text-orange-700 border border-orange-300' 
-        : isLunchSession 
-          ? 'bg-green-100 text-green-700' 
-          : 'bg-blue-100 text-blue-700';
+      const staffMember = staff.find(s => s.id === session.staffId);
       
-      if (editMode && (session.sessionType.includes('AM') || session.sessionType.includes('PM'))) {
-        const eligibleStaff = getEligibleStaff(session.id);
+      // Handle 2:1 students - show all staff assigned to this student/session
+      if (session.is2to1) {
+        const allSessionsForStudent = todaySessions.filter(s => 
+          s.studentId === session.studentId && 
+          s.sessionType === session.sessionType
+        );
+        const staffNames = allSessionsForStudent.map(s => {
+          const staffMember = staff.find(sm => sm.id === s.staffId);
+          return staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
+        });
         return {
-          display: (
-            <select
-              value={pendingChanges[session.id] || session.staffId}
-              onChange={(e) => handleAssignmentChange(session.id, e.target.value)}
-              className="text-xs p-1 rounded border bg-white w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {eligibleStaff.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.role} {member.name}
-                  {student.teamStaff.includes(member.name) ? ' ⭐' : ''}
-                </option>
-              ))}
-            </select>
-          ),
-          class: baseClass
+          display: staffNames.join(' + '),
+          class: 'bg-blue-100 text-blue-700'
         };
       }
-
+      
+      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
+      
       return {
-        display: getSessionDisplay(session, timeIncluded),
-        class: baseClass
+        display: staffDisplay,
+        class: session.sessionType.includes('Lunch') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
       };
     };
 
-    const amCell = renderSessionCell(amSession, true);
-    const lunch1Cell = renderSessionCell(lunch1 || extendedLunch, needsLunch1130, false);
-    const lunch2Cell = renderSessionCell(lunch2 || extendedLunch, needsLunch1200, false);
-    const pmCell = renderSessionCell(pmSession, true);
+    // Determine if lunch coverage is actually needed for this student (matching assignment logic)
+    // Find actual sessions to determine timing
+    const actualAM = todaySessions.find(s => s.studentId === student.id && s.sessionType.includes('AM'));
+    const actualPM = todaySessions.find(s => s.studentId === student.id && s.sessionType.includes('PM'));
+    
+    let needsLunch1130 = false;
+    let needsLunch1200 = false;
+    
+    if (!isAbsentFull) {
+      if (student.lunchSchedule === 'First') {
+        // First lunch students (eat 11:30-12:00)
+        // Need supervision 11:30-12:00 if they're present and have sessions
+        needsLunch1130 = (actualAM && !isAbsentAM) || (actualPM && !isAbsentPM);
+        
+        // Only need 12:00-12:30 supervision if PM starts at 12:30 (gap coverage)
+        needsLunch1200 = actualPM && actualPM.sessionType === 'PM (12:30-15:00)' && !isAbsentPM;
+      } else {
+        // Second lunch students (eat 12:00-12:30)
+        // Need supervision 11:30-12:00 only if AM ends at 11:30 (gap before lunch)
+        needsLunch1130 = actualAM && actualAM.sessionType === 'AM Session (8:45-11:30)' && !isAbsentAM;
+        
+        // Need supervision 12:00-12:30 if PM is present (lunch time)
+        needsLunch1200 = actualPM && !isAbsentPM;
+      }
+    }
+
+    // *** FIXED: Pass session type for attendance checking ***
+    const amCell = renderSessionCell(amSession, pendingAM, false, true, 'AM');
+    const lunch1Cell = renderSessionCell(lunch1, null, true, needsLunch1130, null); // Lunch doesn't need session type check, handled above
+    const lunch2Cell = renderSessionCell(lunch2, null, true, needsLunch1200, null);
+    const pmCell = renderSessionCell(pmSession, pendingPM, false, true, 'PM');
 
     return {
       student,
@@ -1359,38 +1814,6 @@ const ABAScheduler = () => {
                 Auto-Assign Sessions
               </button>
               
-              {/* Edit Mode Toggle */}
-              {schedule.length > 0 && !editMode && (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2"
-                >
-                  <Edit3 size={16} />
-                  Edit Assignments
-                </button>
-              )}
-              
-              {/* Edit Mode Controls */}
-              {editMode && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={applyChanges}
-                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors flex items-center gap-2"
-                  >
-                    <Save size={16} />
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={cancelEdit}
-                    className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors flex items-center gap-2"
-                  >
-                    <X size={16} />
-                    Cancel
-                  </button>
-                </div>
-              )}
-              
-              {/* Export CSV Button */}
               <button
                 onClick={exportToCSV}
                 className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
@@ -1406,10 +1829,7 @@ const ABAScheduler = () => {
               </button>
               
               <button
-                onClick={() => {
-                  console.log('Analysis button clicked. scheduleAnalysis:', scheduleAnalysis, 'showAnalysis:', showAnalysis);
-                  setShowAnalysis(!showAnalysis);
-                }}
+                onClick={() => setShowAnalysis(!showAnalysis)}
                 className={`px-4 py-2 rounded-md transition-colors ${
                   scheduleAnalysis 
                     ? 'bg-cyan-500 text-white hover:bg-cyan-600' 
@@ -1427,6 +1847,12 @@ const ABAScheduler = () => {
                 Manage Staff
               </button>
               <button
+                onClick={() => setShowAttendanceManager(true)}
+                className="bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition-colors"
+              >
+                Attendance
+              </button>
+              <button
                 onClick={() => setShowTeamManager(true)}
                 className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors"
               >
@@ -1435,42 +1861,26 @@ const ABAScheduler = () => {
             </div>
           </div>
 
-          {/* Edit Mode Banner */}
-          {editMode && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-yellow-800 mb-2">✏️ Edit Mode Active</h3>
-              <div className="text-sm text-yellow-700 space-y-1">
-                <div>• Use dropdowns in AM/PM columns to reassign staff</div>
-                <div>• Staff marked with ⭐ are team members (preferred)</div>
-                <div>• Dropdowns show only eligible staff (no conflicts)</div>
-                <div>• Orange highlighting indicates pending changes</div>
-                <div>• Click "Save Changes" to apply or "Cancel" to discard</div>
+          {/* BCBA Manual Selection Status */}
+          {pendingBCBAAssignments.length > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-purple-800 mb-2">⚠️ BCBA Manual Selection Required</h3>
+              <div className="text-sm text-purple-700 space-y-1">
+                <div>• {pendingBCBAAssignments.length} sessions need BCBA coverage</div>
+                <div>• Purple dropdowns will appear in the schedule table</div>
+                <div>• Select appropriate BCBA from dropdown to complete assignments</div>
+                <div>• This prevents automatic BCBA assignments and gives you manual control</div>
               </div>
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-blue-800 mb-2">Enhanced Assignment Algorithm - 6-Pass Constraint Relaxation</h3>
-            <div className="text-sm text-blue-700 space-y-1">
-              <div><strong>Priority Cascade:</strong> RBT → BS → EA → MHA → BCBA → CC → Teacher (emergency)</div>
-              <div><strong>Pass 1:</strong> All constraints (3-day rule + all specialist limits)</div>
-              <div><strong>Pass 2:</strong> Relax BS limits only (BS can work multiple sessions)</div>
-              <div><strong>Pass 3:</strong> Relax 3-day rule, keep EA/MHA/BCBA limits</div>
-              <div><strong>Pass 4:</strong> Relax EA/MHA/BCBA limits, restore 3-day rule</div>
-              <div><strong>Pass 5:</strong> Relax all constraints except basic conflicts</div>
-              <div><strong>Pass 6:</strong> Emergency Teacher assignment if needed</div>
-              <div><strong>REQUIRED:</strong> All students MUST have both AM & PM sessions assigned</div>
-              <div><strong>Lunch Coverage:</strong> Teachers + unscheduled staff (1:3 ratio)</div>
-              <div><strong>Available Staff:</strong> {staff.filter(s => s.available).length}/{staff.length} • <strong>Students:</strong> {students.length}</div>
-            </div>
-          </div>
+
 
           {scheduleAnalysis && showAnalysis && (
             <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-cyan-800 mb-4">📊 Schedule Analysis & Unassigned Staff</h3>
+              <h3 className="font-semibold text-cyan-800 mb-4">📊 Schedule Analysis</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                {/* AM Session Analysis */}
                 <div className="bg-white rounded-lg p-4 border border-cyan-200">
                   <h4 className="font-semibold text-gray-800 mb-3">
                     AM Sessions (8:45-11:30/12:00) 
@@ -1479,47 +1889,22 @@ const ABAScheduler = () => {
                     </span>
                   </h4>
                   
-                  <div className="mb-3">
-                    <span className="text-sm font-medium text-gray-600">
-                      Assigned: {scheduleAnalysis.totalAssigned?.AM || 0} • 
-                      Unassigned: {scheduleAnalysis.unassignedAM?.length || 0} • 
-                      Total Available: {scheduleAnalysis.totalAvailable || 0}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-700">Assignments by Role:</span>
-                      <div className="grid grid-cols-3 gap-2 mt-1 text-xs">
-                        <span>RBT: {scheduleAnalysis.roleAssignments?.AM?.RBT || 0}</span>
-                        <span>BS: {scheduleAnalysis.roleAssignments?.AM?.BS || 0}</span>
-                        <span>EA: {scheduleAnalysis.roleAssignments?.AM?.EA || 0}</span>
-                        <span>MHA: {scheduleAnalysis.roleAssignments?.AM?.MHA || 0}</span>
-                        <span>BCBA: {scheduleAnalysis.roleAssignments?.AM?.BCBA || 0}</span>
-                        <span>CC: {scheduleAnalysis.roleAssignments?.AM?.CC || 0}</span>
+                  {scheduleAnalysis.unassignedAM && scheduleAnalysis.unassignedAM.length > 0 ? (
+                    <div>
+                      <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedAM.length}):</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {scheduleAnalysis.unassignedAM.map(member => (
+                          <span key={member.id} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                            {member.role} {member.name}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    
-                    {scheduleAnalysis.unassignedAM && scheduleAnalysis.unassignedAM.length > 0 && (
-                      <div>
-                        <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedAM.length}):</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {scheduleAnalysis.unassignedAM.map(member => (
-                            <span key={member.id} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                              {member.role} {member.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {(!scheduleAnalysis.unassignedAM || scheduleAnalysis.unassignedAM.length === 0) && (
-                      <div className="text-green-700 font-medium text-sm">✓ All available staff assigned!</div>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="text-green-700 font-medium text-sm">✓ All available staff assigned!</div>
+                  )}
                 </div>
 
-                {/* PM Session Analysis */}
                 <div className="bg-white rounded-lg p-4 border border-cyan-200">
                   <h4 className="font-semibold text-gray-800 mb-3">
                     PM Sessions (12:00/12:30-15:00)
@@ -1528,72 +1913,20 @@ const ABAScheduler = () => {
                     </span>
                   </h4>
                   
-                  <div className="mb-3">
-                    <span className="text-sm font-medium text-gray-600">
-                      Assigned: {scheduleAnalysis.totalAssigned?.PM || 0} • 
-                      Unassigned: {scheduleAnalysis.unassignedPM?.length || 0} • 
-                      Total Available: {scheduleAnalysis.totalAvailable || 0}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="font-medium text-gray-700">Assignments by Role:</span>
-                      <div className="grid grid-cols-3 gap-2 mt-1 text-xs">
-                        <span>RBT: {scheduleAnalysis.roleAssignments?.PM?.RBT || 0}</span>
-                        <span>BS: {scheduleAnalysis.roleAssignments?.PM?.BS || 0}</span>
-                        <span>EA: {scheduleAnalysis.roleAssignments?.PM?.EA || 0}</span>
-                        <span>MHA: {scheduleAnalysis.roleAssignments?.PM?.MHA || 0}</span>
-                        <span>BCBA: {scheduleAnalysis.roleAssignments?.PM?.BCBA || 0}</span>
-                        <span>CC: {scheduleAnalysis.roleAssignments?.PM?.CC || 0}</span>
+                  {scheduleAnalysis.unassignedPM && scheduleAnalysis.unassignedPM.length > 0 ? (
+                    <div>
+                      <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedPM.length}):</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {scheduleAnalysis.unassignedPM.map(member => (
+                          <span key={member.id} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                            {member.role} {member.name}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    
-                    {scheduleAnalysis.unassignedPM && scheduleAnalysis.unassignedPM.length > 0 && (
-                      <div>
-                        <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedPM.length}):</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {scheduleAnalysis.unassignedPM.map(member => (
-                            <span key={member.id} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                              {member.role} {member.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {(!scheduleAnalysis.unassignedPM || scheduleAnalysis.unassignedPM.length === 0) && (
-                      <div className="text-green-700 font-medium text-sm">✓ All available staff assigned!</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Summary Statistics */}
-              <div className="bg-white rounded-lg p-3 border border-cyan-200">
-                <h4 className="font-semibold text-gray-800 mb-2">💡 Capacity Summary</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-bold text-lg text-blue-600">{scheduleAnalysis.totalAvailable || 0}</div>
-                    <div className="text-gray-600">Available Staff</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg text-green-600">{scheduleAnalysis.totalAssigned?.AM || 0}</div>
-                    <div className="text-gray-600">AM Assigned</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg text-green-600">{scheduleAnalysis.totalAssigned?.PM || 0}</div>
-                    <div className="text-gray-600">PM Assigned</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg text-orange-600">
-                      {Math.max(
-                        scheduleAnalysis.unassignedAM?.length || 0, 
-                        scheduleAnalysis.unassignedPM?.length || 0
-                      )}
-                    </div>
-                    <div className="text-gray-600">Max Unassigned</div>
-                  </div>
+                  ) : (
+                    <div className="text-green-700 font-medium text-sm">✓ All available staff assigned!</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1637,10 +1970,7 @@ const ABAScheduler = () => {
                           {rowData.pmDisplay}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-xs text-gray-600 max-w-xs">
-                            {student.teamStaff.slice(0, 8).join(', ')}
-                            {student.teamStaff.length > 8 && ` +${student.teamStaff.length - 8} more`}
-                          </div>
+                          {renderTeamStaff(student)}
                         </td>
                       </tr>
                     );
@@ -1653,29 +1983,139 @@ const ABAScheduler = () => {
           <div className="flex gap-6 text-sm mt-6">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded"></div>
-              <span className="text-gray-600">AM/PM Assigned</span>
+              <span className="text-gray-600">Assigned</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
-              <span className="text-gray-600">Lunch Coverage</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-100 border border-yellow-200 rounded"></div>
-              <span className="text-gray-600">Coverage Needed</span>
+              <div className="w-4 h-4 bg-purple-100 border border-purple-200 rounded"></div>
+              <span className="text-gray-600">BCBA Manual Selection Required</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-100 border border-red-200 rounded"></div>
               <span className="text-gray-600">Assignment Needed</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-100 border border-orange-200 rounded"></div>
-              <span className="text-gray-600">Pending Change</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded"></div>
-              <span className="text-gray-600">X = Student at lunch</span>
+              <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
+              <span className="text-gray-600">Student Absent</span>
             </div>
           </div>
+
+          {showAttendanceManager && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowAttendanceManager(false)}
+            >
+              <div 
+                className="bg-white rounded-lg shadow-xl border w-full max-w-6xl"
+                style={{ height: '85vh', maxHeight: '700px' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
+                  <h3 className="text-xl font-semibold">Student Attendance - {selectedDate}</h3>
+                  <button 
+                    onClick={() => setShowAttendanceManager(false)}
+                    className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div 
+                  className="px-6 py-4"
+                  style={{ 
+                    height: 'calc(85vh - 140px)', 
+                    maxHeight: 'calc(700px - 140px)', 
+                    overflowY: 'scroll',
+                    overflowX: 'hidden'
+                  }}
+                >
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">Attendance Options</h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <div><strong>Present:</strong> Student will attend both AM and PM sessions</div>
+                      <div><strong>AM Out:</strong> Student absent for AM session only</div>
+                      <div><strong>PM Out:</strong> Student absent for PM session only</div>
+                      <div><strong>Full Day Absent:</strong> Student will not attend any sessions</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {students.map(student => {
+                      const currentAttendance = getStudentAttendance(student.id, selectedDate);
+                      
+                      return (
+                        <div key={student.id} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="mb-3">
+                            <h4 className="font-semibold text-lg text-gray-800">{student.name}</h4>
+                            <p className="text-sm text-gray-600">{student.ratio} • {student.lunchSchedule} Lunch</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="block">
+                              <input
+                                type="radio"
+                                name={`attendance-${student.id}`}
+                                value="present"
+                                checked={currentAttendance === 'present'}
+                                onChange={() => setStudentAttendanceState(student.id, selectedDate, 'present')}
+                                className="mr-2"
+                              />
+                              <span className="text-green-700 font-medium">Present</span>
+                            </label>
+                            
+                            <label className="block">
+                              <input
+                                type="radio"
+                                name={`attendance-${student.id}`}
+                                value="absent_am"
+                                checked={currentAttendance === 'absent_am'}
+                                onChange={() => setStudentAttendanceState(student.id, selectedDate, 'absent_am')}
+                                className="mr-2"
+                              />
+                              <span className="text-orange-700 font-medium">AM Out</span>
+                            </label>
+                            
+                            <label className="block">
+                              <input
+                                type="radio"
+                                name={`attendance-${student.id}`}
+                                value="absent_pm"
+                                checked={currentAttendance === 'absent_pm'}
+                                onChange={() => setStudentAttendanceState(student.id, selectedDate, 'absent_pm')}
+                                className="mr-2"
+                              />
+                              <span className="text-orange-700 font-medium">PM Out</span>
+                            </label>
+                            
+                            <label className="block">
+                              <input
+                                type="radio"
+                                name={`attendance-${student.id}`}
+                                value="absent_full"
+                                checked={currentAttendance === 'absent_full'}
+                                onChange={() => setStudentAttendanceState(student.id, selectedDate, 'absent_full')}
+                                className="mr-2"
+                              />
+                              <span className="text-red-700 font-medium">Full Day Absent</span>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
+                  <p className="text-sm text-gray-600">Changes automatically saved • Rerun Auto-Assign after attendance changes</p>
+                  <button 
+                    onClick={() => setShowAttendanceManager(false)}
+                    className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showStaffManager && (
             <div 
@@ -1687,7 +2127,6 @@ const ABAScheduler = () => {
                 style={{ height: '80vh', maxHeight: '600px' }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Fixed Header */}
                 <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
                   <h3 className="text-xl font-semibold">Manage Staff Availability</h3>
                   <button 
@@ -1698,7 +2137,6 @@ const ABAScheduler = () => {
                   </button>
                 </div>
                 
-                {/* Scrollable Content */}
                 <div 
                   className="px-6 py-4"
                   style={{ 
@@ -1751,31 +2189,12 @@ const ABAScheduler = () => {
                       <div className="bg-white p-2 rounded border">
                         <span className="font-medium text-indigo-700">BS:</span> {staff.filter(s => s.role === 'BS').length}
                       </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-cyan-700">EA:</span> {staff.filter(s => s.role === 'EA').length}
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-teal-700">MHA:</span> {staff.filter(s => s.role === 'MHA').length}
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-amber-700">CC:</span> {staff.filter(s => s.role === 'CC').length}
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-emerald-700">Teacher:</span> {staff.filter(s => s.role === 'Teacher').length}
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-pink-700">Director:</span> {staff.filter(s => s.role === 'Director').length}
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <span className="font-medium text-violet-700">Clinical Trainer:</span> {staff.filter(s => s.role === 'Clinical Trainer').length}
-                      </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Fixed Footer */}
                 <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-                  <p className="text-sm text-gray-600">Scroll to see all staff • Click outside to close</p>
+                  <p className="text-sm text-gray-600">Click staff to toggle availability</p>
                   <button 
                     onClick={() => setShowStaffManager(false)}
                     className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
@@ -1797,7 +2216,6 @@ const ABAScheduler = () => {
                 style={{ height: '85vh', maxHeight: '700px' }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Fixed Header */}
                 <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
                   <h3 className="text-xl font-semibold">Manage Student Teams</h3>
                   <button 
@@ -1808,7 +2226,6 @@ const ABAScheduler = () => {
                   </button>
                 </div>
                 
-                {/* Scrollable Content */}
                 <div 
                   className="px-6 py-4"
                   style={{ 
@@ -1820,7 +2237,7 @@ const ABAScheduler = () => {
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {students
-                      .sort((a, b) => a.name.localeCompare(b.name)) // Sort students alphabetically by name
+                      .sort((a, b) => a.name.localeCompare(b.name))
                       .map(student => (
                       <div key={student.id} className="border rounded-lg p-4 bg-gray-50">
                         <div className="mb-3">
@@ -1856,7 +2273,7 @@ const ABAScheduler = () => {
                           <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
                             {staff
                               .filter(s => s.available && !student.teamStaff.includes(s.name))
-                              .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically by name
+                              .sort((a, b) => a.name.localeCompare(b.name))
                               .map(staffMember => (
                               <button
                                 key={staffMember.id}
@@ -1878,9 +2295,8 @@ const ABAScheduler = () => {
                   </div>
                 </div>
                 
-                {/* Fixed Footer */}
                 <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-                  <p className="text-sm text-gray-600">Scroll to see all students • Click outside to close</p>
+                  <p className="text-sm text-gray-600">Changes automatically saved</p>
                   <button 
                     onClick={() => setShowTeamManager(false)}
                     className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
