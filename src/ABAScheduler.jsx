@@ -1484,7 +1484,7 @@ const ABAScheduler = () => {
       if (student.pairedWith && student.id > student.pairedWith) return; // Skip paired duplicates
       
       const currentAttendance = getStudentAttendance(student.id, selectedDate);
-      if (currentAttendance === 'absent_full') return; // Skip fully absent students
+      if (currentAttendance === 'absent_full') return; // Skip fully absent students, okay?
       
       // Get lunch needs for this student
       const lunchNeeds = globalStudentLunchNeeds[student.id] || { needs1130: false, needs1200: false };
