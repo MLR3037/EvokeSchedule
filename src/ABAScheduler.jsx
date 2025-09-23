@@ -1481,7 +1481,7 @@ const ABAScheduler = () => {
     let cleanupCount = 0;
     
     students.forEach(student => {
-      if (student.pairedWith && student.id > student.pairedWith) return; // Skip paired duplicates
+      if (student.pairedWith && student.id > student.pairedWith) return; // Skip paired duplicates here.
       
       const currentAttendance = getStudentAttendance(student.id, selectedDate);
       if (currentAttendance === 'absent_full') return; // Skip fully absent students, okay?
