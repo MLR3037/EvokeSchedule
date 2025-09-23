@@ -37,7 +37,7 @@ const ABAScheduler = () => {
     { id: 25, name: 'Haiden', role: 'RBT', available: true },
     { id: 26, name: 'Hannah', role: 'RBT', available: true },
     { id: 27, name: 'Harry', role: 'RBT', available: true },
-    { id: 28, name: 'Helen', role: 'BCBA', available: true },
+  { id: 28, name: 'Helen', role: 'BS', available: true },
     { id: 29, name: 'Jay S', role: 'BS', available: true },
     { id: 30, name: 'Jayme', role: 'RBT', available: true },
     { id: 31, name: 'Jess', role: 'RBT', available: true },
@@ -53,7 +53,7 @@ const ABAScheduler = () => {
     { id: 41, name: 'Klaus', role: 'RBT', available: true },
     { id: 42, name: 'Laurel', role: 'RBT', available: true },
     { id: 43, name: 'Lex', role: 'RBT', available: true },
-    { id: 44, name: 'Liz M', role: 'BS', available: true },
+  { id: 44, name: 'Liz M', role: 'BS', available: true },
     { id: 45, name: 'Lyndsey', role: 'RBT', available: true },
     { id: 46, name: 'Maddy', role: 'MHA', available: true },
     { id: 47, name: 'Malik', role: 'RBT', available: true },
@@ -96,57 +96,57 @@ const ABAScheduler = () => {
     { id: 84, name: 'Sam K', role: 'Clinical Trainer', available: true }
   ]);
   const [students, setStudents] = useState([
-    { id: 1, name: 'Ada', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Araceli', 'Charlie', 'Helen', 'Katie', 'Klaus', 'Liz M', 'Taylor', 'Lyndsey'] },
-    { id: 3, name: 'Alejandro', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Jayme', 'Keyshawn', 'Klaus', 'Laurel', 'Lex', 'Taylor'] },
-    { id: 4, name: 'Asen', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Jay S', 'Katie', 'Keyshawn', 'Lex', 'Liz M', 'Megan M', 'Mel', 'Taylor'] },
-    { id: 5, name: 'Austin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Haason', 'Harry', 'Jayme', 'Lex', 'Megan M', 'ShaeLoren', 'Yun', 'Adriana'] },
-    { id: 6, name: 'Caleb', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Derez', 'Elise', 'Jay S', 'Kat', 'Liz M', 'Megan M', 'Mel', 'ShaeLoren', 'Taylor'] },
-    { id: 7, name: 'Charles', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Katie', 'Keyshawn', 'Klaus', 'Mel', 'Natalie J', 'Nicole', 'Will S'] },
-    { id: 8, name: 'Elijah', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Haason', 'Harry', 'Katie', 'Lex', 'Liz M', 'Robert', 'Will S'] },
-    { id: 9, name: 'Gabe', ratio: '1:2', pairedWith: 20, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Kat', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
-    { id: 10, name: 'Isaac', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Lex', 'Tia', 'Adriana'] },
-    { id: 11, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Allie', 'Araceli', 'Harry', 'Laurel', 'Liz M', 'Megan M', 'Natalie J', 'Nicole', 'Tia', 'Rayann'] },
-    { id: 12, name: 'Josephine', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jayme', 'Keyshawn', 'Lex', 'Liz M', 'Mel', 'Natalie J', 'Nicole', 'ShaeLoren'] },
-    { id: 13, name: 'Justin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Haason', 'Harry', 'Laurel', 'Robert', 'Tia', 'Yun'] },
-    { id: 14, name: 'Levi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Elise', 'Haason', 'Jayme', 'Liz M', 'Mel', 'Nicole', 'Quay', 'Lyndsey'] },
-    { id: 15, name: 'Logan', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Haason', 'Jayme', 'Jordyn', 'Keyshawn', 'Lex', 'Mel', 'Natalie J', 'Robert', 'ShaeLoren'] },
-    { id: 16, name: 'Lydia', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Derez', 'Haason', 'Jordyn', 'Keyshawn', 'Laurel', 'Mel', 'Natalie J', 'Robert', 'Tia'] },
-    { id: 17, name: 'Mateo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Harry', 'Kat', 'Liz M', 'Natalie J', 'Quay', 'Tia', 'Yun'] },
-    { id: 18, name: 'Michael', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Helen', 'Katie', 'Klaus', 'Megan M', 'Mel', 'ShaeLoren', 'Will S'] },
-    { id: 19, name: 'Peter', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Carmelo', 'Derez', 'Jordyn', 'Keyshawn', 'Klaus', 'Laurel', 'Liz M', 'Quay', 'ShaeLoren'] },
-    { id: 20, name: 'Roman', ratio: '1:2', pairedWith: 9, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
-    { id: 21, name: 'Wenzday', ratio: '2:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Charlie', 'Elise', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Klaus', 'Laurel', 'Lex', 'ShaeLoren'] },
-    { id: 22, name: 'Remi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Harry', 'Katie', 'Keyshawn', 'ShaeLoren'] },
-    { id: 23, name: 'Kymani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Carmelo', 'Helen', 'Jay S', 'Klaus', 'Quay', 'Taylor', 'Adriana'] },
-    { id: 24, name: 'Arian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Derez', 'Helen', 'Jordyn', 'Taylor'] },
-    { id: 25, name: 'Vinny', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Jayme', 'Katie', 'Nicole'] },
-    { id: 26, name: 'Bao', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Jay S', 'Jordyn', 'Robert', 'Taylor', 'Yun'] },
-    { id: 27, name: 'Adrian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jay S', 'Jordyn', 'Megan M', 'Quay', 'Will S'] },
-    { id: 28, name: 'Cesar', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Fernando', 'Jay S', 'Klaus', 'Quay', 'Robert', 'Taylor', 'Tia'] },
-    { id: 29, name: 'Jay', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Carmelo', 'Derez', 'Helen'] },
-    { id: 30, name: 'Elias', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Haason', 'Helen', 'Jordyn', 'Mel', 'Quay', 'Robert', 'Will S'] },
-    { id: 31, name: 'Milo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Helen', 'Jordyn', 'Laurel', 'Robert', 'Lyndsey'] },
-    { id: 32, name: 'Aiden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Jess', 'Sebastian', 'Tess', 'Rayann'] },
-    { id: 33, name: 'Anthony', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Sebastian', 'Zion', 'Paxtynn'] },
-    { id: 34, name: 'Calvin', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Christina', 'Emma', 'Faith', 'Haiden', 'Hannah', 'Malik', 'Sebastian', 'Syder'] },
-    { id: 35, name: 'Carter', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Nico', 'Tess'] },
-    { id: 36, name: "Dai'Veon", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Hannah', 'Josh', 'Sebastian', 'Syder', 'Paxtynn', 'Rayann'] },
-    { id: 37, name: 'Drake', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Alannah', 'Christina', 'Faith', 'Fin', 'Josh', 'Kaydie', 'Malik', 'Syder', 'Tess'] },
-    { id: 38, name: 'Henry', ratio: '1:2', pairedWith: 42, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Zion'] },
-    { id: 39, name: 'Kyden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Christina', 'Faith', 'Haiden', 'Hannah', 'Kaydie'] },
-    { id: 40, name: 'Noah', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Emma', 'Haiden', 'Kaydie', 'Malik', 'Nico', 'Tess'] },
-    { id: 41, name: 'Ghani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Brenda', 'Christina', 'Emma', 'Faith', 'Haiden', 'Jess', 'Sebastian', 'Syder', 'Tess', 'Anna'] },
-    { id: 42, name: 'Sebastian', ratio: '1:2', pairedWith: 38, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Tess', 'Zion'] },
-    { id: 43, name: 'Shawn', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Hannah', 'Jess', 'Nik', 'Savannah G', 'Syder', 'Tess'] },
-    { id: 44, name: 'William', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Kaydie', 'Nik', 'Shae', 'Syder', 'Tess', 'Zion', 'Paxtynn'] },
-    { id: 45, name: 'Darrian', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna'] },
-    { id: 46, name: 'Sean', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Josh', 'Nico', 'Savannah G', 'Shae', 'Zion'] },
-    { id: 47, name: 'Joseph D.', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Brenda', 'Emma', 'Fin', 'Malik', 'Savannah G', 'Syder', 'Zion', 'Paxtynn'] },
-    { id: 48, name: "C'Laya", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Christina', 'Hannah', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
-    { id: 49, name: 'Jesse', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Josh', 'Malik', 'Nico', 'Nik', 'Shae', 'Zion', 'Anna'] },
-    { id: 50, name: 'Austin M.', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Faith', 'Josh', 'Kaydie', 'Nik', 'Savannah G', 'Shae', 'Syder'] },
-    { id: 51, name: 'Bryce', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
-    { id: 52, name: 'Tejas', ratio: '2:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Josh', 'Kaydie', 'Nico', 'Nik', 'Savannah G', 'Sebastian', 'Shae', 'Zion'] }
+  { id: 1, name: 'Ada', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Araceli', 'Charlie', 'Helen', 'Katie', 'Klaus', 'Liz M', 'Taylor', 'Adriana', 'Lyndsey'] },
+  { id: 3, name: 'Alejandro', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Jayme', 'Keyshawn', 'Klaus', 'Laurel', 'Lex', 'Taylor'] },
+  { id: 4, name: 'Asen', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Jay S', 'Katie', 'Keyshawn', 'Lex', 'Liz M', 'Megan M', 'Mel', 'Taylor'] },
+  { id: 5, name: 'Austin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Haason', 'Harry', 'Jayme', 'Lex', 'Megan M', 'ShaeLoren', 'Adriana', 'Yun'] },
+  { id: 6, name: 'Caleb', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Derez', 'Elise', 'Jay S', 'Kat', 'Liz M', 'Megan M', 'Mel', 'ShaeLoren', 'Taylor'] },
+  { id: 7, name: 'Charles', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Katie', 'Keyshawn', 'Klaus', 'Mel', 'Natalie J', 'Nicole', 'Will S'] },
+  { id: 8, name: 'Elijah', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Haason', 'Harry', 'Katie', 'Lex', 'Liz M', 'Robert', 'Will S'] },
+  { id: 9, name: 'Gabe', ratio: '1:2', pairedWith: 20, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Kat', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
+  { id: 10, name: 'Isaac', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Lex', 'Tia', 'Adriana'] },
+  { id: 11, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Allie', 'Araceli', 'Harry', 'Laurel', 'Liz M', 'Megan M', 'Natalie J', 'Nicole', 'Tia', 'Rayann'] },
+  { id: 12, name: 'Josephine', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jayme', 'Keyshawn', 'Lex', 'Liz M', 'Mel', 'Natalie J', 'Nicole', 'ShaeLoren'] },
+  { id: 13, name: 'Justin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Haason', 'Harry', 'Laurel', 'Robert', 'Tia', 'Yun'] },
+  { id: 14, name: 'Levi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Elise', 'Haason', 'Jayme', 'Liz M', 'Mel', 'Nicole', 'Quay', 'Lyndsey'] },
+  { id: 15, name: 'Logan', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Haason', 'Jayme', 'Jordyn', 'Keyshawn', 'Lex', 'Mel', 'Natalie J', 'Robert', 'ShaeLoren'] },
+  { id: 16, name: 'Lydia', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Derez', 'Haason', 'Jordyn', 'Keyshawn', 'Laurel', 'Mel', 'Natalie J', 'Robert', 'Tia', 'Lyndsey'] },
+  { id: 17, name: 'Mateo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Harry', 'Kat', 'Liz M', 'Natalie J', 'Quay', 'Tia', 'Yun'] },
+  { id: 18, name: 'Michael', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Helen', 'Katie', 'Klaus', 'Megan M', 'Mel', 'ShaeLoren', 'Will S'] },
+  { id: 19, name: 'Peter', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Carmelo', 'Derez', 'Jordyn', 'Keyshawn', 'Klaus', 'Laurel', 'Liz M', 'Quay', 'ShaeLoren'] },
+  { id: 20, name: 'Roman', ratio: '1:2', pairedWith: 9, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
+  { id: 21, name: 'Wenzday', ratio: '2:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Charlie', 'Elise', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Klaus', 'Laurel', 'Lex', 'ShaeLoren'] },
+  { id: 22, name: 'Remi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Harry', 'Katie', 'Keyshawn', 'ShaeLoren'] },
+  { id: 23, name: 'Kymani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Carmelo', 'Helen', 'Jay S', 'Klaus', 'Quay', 'Taylor', 'Adriana'] },
+  { id: 24, name: 'Arian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Derez', 'Helen', 'Jordyn', 'Taylor'] },
+  { id: 25, name: 'Vinny', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Jayme', 'Katie', 'Nicole'] },
+  { id: 26, name: 'Bao', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Jay S', 'Jordyn', 'Robert', 'Taylor', 'Yun'] },
+  { id: 27, name: 'Adrian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jay S', 'Jordyn', 'Megan M', 'Quay', 'Will S'] },
+  { id: 28, name: 'Cesar', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Fernando', 'Jay S', 'Klaus', 'Quay', 'Robert', 'Taylor', 'Tia'] },
+  { id: 29, name: 'Jay', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Carmelo', 'Derez', 'Helen'] },
+  { id: 30, name: 'Elias', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Haason', 'Helen', 'Jordyn', 'Mel', 'Quay', 'Robert', 'Will S'] },
+  { id: 31, name: 'Milo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Helen', 'Jordyn', 'Laurel', 'Robert', 'Lyndsey'] },
+  { id: 32, name: 'Aiden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Jess', 'Sebastian', 'Tess', 'Rayann'] },
+  { id: 33, name: 'Anthony', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Sebastian', 'Zion', 'Paxtynn', 'Elise'] },
+  { id: 34, name: 'Calvin', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Christina', 'Emma', 'Faith', 'Haiden', 'Hannah', 'Malik', 'Sebastian', 'Syder', 'Elise'] },
+  { id: 35, name: 'Carter', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Nico', 'Tess', 'Elise'] },
+  { id: 36, name: "Dai'Veon", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Hannah', 'Josh', 'Sebastian', 'Syder', 'Rayann', 'Paxtynn'] },
+  { id: 37, name: 'Drake', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Alannah', 'Christina', 'Faith', 'Fin', 'Josh', 'Kaydie', 'Malik', 'Syder', 'Tess', 'Elise'] },
+  { id: 38, name: 'Henry', ratio: '1:2', pairedWith: 42, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Zion'] },
+  { id: 39, name: 'Kyden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Christina', 'Faith', 'Haiden', 'Hannah', 'Kaydie'] },
+  { id: 40, name: 'Noah', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Emma', 'Haiden', 'Kaydie', 'Malik', 'Nico', 'Tess', 'Elise'] },
+  { id: 41, name: 'Abdulghani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Brenda', 'Christina', 'Emma', 'Faith', 'Haiden', 'Jess', 'Sebastian', 'Syder', 'Tess', 'Anna'] },
+  { id: 42, name: 'Sebastian', ratio: '1:2', pairedWith: 38, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Tess', 'Zion'] },
+  { id: 43, name: 'Shawn', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Hannah', 'Jess', 'Nik', 'Savannah G', 'Syder', 'Tess'] },
+  { id: 44, name: 'William', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Kaydie', 'Nik', 'Shae', 'Syder', 'Tess', 'Zion', 'Paxtynn'] },
+  { id: 45, name: 'Darrian', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna'] },
+  { id: 46, name: 'Sean', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Josh', 'Nico', 'Savannah G', 'Shae', 'Zion'] },
+  { id: 47, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Malik', 'Savannah G', 'Syder', 'Zion', 'Rayann', 'Paxtynn'] },
+  { id: 48, name: "C'Laya", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Christina', 'Hannah', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna', 'Elise'] },
+  { id: 49, name: 'Jesse', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Josh', 'Malik', 'Nico', 'Nik', 'Shae', 'Zion', 'Anna'] },
+  { id: 50, name: 'Austin M.', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Faith', 'Josh', 'Kaydie', 'Nik', 'Savannah G', 'Shae', 'Syder'] },
+  { id: 51, name: 'Bryce', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
+  { id: 52, name: 'Tejas', ratio: '2:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Josh', 'Kaydie', 'Nico', 'Nik', 'Savannah G', 'Sebastian', 'Shae', 'Zion'] }
   ]);
 
   const [schedule, setSchedule] = useState([]);
@@ -178,6 +178,26 @@ const ABAScheduler = () => {
   // Additional modal states
   const [showStaffManager, setShowStaffManager] = useState(false);
   const [showTeamManager, setShowTeamManager] = useState(false);
+
+  // Manual (locked-in) staff-student assignments for AM/PM sessions
+  // Key: `${studentId}-${sessionType}-${date}`; Value: staffId
+  const [manualAssignments, setManualAssignments] = useState({});
+
+  // Set or clear a manual assignment
+  const setManualAssignment = (studentId, sessionType, date, staffId) => {
+    const key = `${studentId}-${sessionType}-${date}`;
+    setManualAssignments(prev => {
+      if (staffId === null || staffId === undefined) {
+        // Remove manual assignment
+        const updated = { ...prev };
+        delete updated[key];
+        return updated;
+      } else {
+        // Set manual assignment
+        return { ...prev, [key]: staffId };
+      }
+    });
+  };
 
   const sessionTypes = {
     'AM Session (8:45-11:30)': '8:45-11:30',
@@ -518,56 +538,103 @@ const ABAScheduler = () => {
     const availableStaff = staff.filter(s => s.available);
     const amAssignments = new Set();
     const pmAssignments = new Set();
-    
-    sessions.forEach(session => {
-      if (session.sessionType.includes('AM Session')) {
-        amAssignments.add(session.staffId);
-      } else if (session.sessionType.includes('PM')) {
-        pmAssignments.add(session.staffId);
-      }
-    });
-    
-    const unassignedAM = availableStaff.filter(member => 
-      !amAssignments.has(member.id) && member.role !== 'Teacher'
-    );
-    
-    const unassignedPM = availableStaff.filter(member => 
-      !pmAssignments.has(member.id) && member.role !== 'Teacher'
-    );
-    
-    const roleAssignments = {
-      AM: { RBT: 0, BS: 0, EA: 0, MHA: 0, BCBA: 0, CC: 0 },
-      PM: { RBT: 0, BS: 0, EA: 0, MHA: 0, BCBA: 0, CC: 0 }
-    };
-    
+    const amRoleCounts = {};
+    const pmRoleCounts = {};
+
+    // Track manual assignment counts
+    let manualAM = 0;
+    let manualPM = 0;
     sessions.forEach(session => {
       const staffMember = staff.find(s => s.id === session.staffId);
-      if (staffMember && staffMember.role !== 'Teacher') {
-        if (session.sessionType.includes('AM Session')) {
-          roleAssignments.AM[staffMember.role] = (roleAssignments.AM[staffMember.role] || 0) + 1;
-        } else if (session.sessionType.includes('PM')) {
-          roleAssignments.PM[staffMember.role] = (roleAssignments.PM[staffMember.role] || 0) + 1;
+      if (session.sessionType.includes('AM Session')) {
+        amAssignments.add(session.staffId);
+        if (staffMember) {
+          amRoleCounts[staffMember.role] = (amRoleCounts[staffMember.role] || 0) + 1;
         }
+        if (session.manual) manualAM++;
+      } else if (session.sessionType.includes('PM')) {
+        pmAssignments.add(session.staffId);
+        if (staffMember) {
+          pmRoleCounts[staffMember.role] = (pmRoleCounts[staffMember.role] || 0) + 1;
+        }
+        if (session.manual) manualPM++;
       }
     });
-    
+
+    const unassignedAM = availableStaff.filter(member =>
+      !amAssignments.has(member.id) && member.role !== 'Teacher'
+    );
+
+    const unassignedPM = availableStaff.filter(member =>
+      !pmAssignments.has(member.id) && member.role !== 'Teacher'
+    );
+
+    const roleAssignments = {
+      AM: amRoleCounts,
+      PM: pmRoleCounts
+    };
+
     const totalAvailableStaff = availableStaff.filter(s => s.role !== 'Teacher').length;
     const amUtilization = totalAvailableStaff > 0 ? ((totalAvailableStaff - unassignedAM.length) / totalAvailableStaff * 100).toFixed(1) : 0;
     const pmUtilization = totalAvailableStaff > 0 ? ((totalAvailableStaff - unassignedPM.length) / totalAvailableStaff * 100).toFixed(1) : 0;
-    
+
     return {
       unassignedAM,
       unassignedPM,
       roleAssignments,
       utilization: { AM: amUtilization, PM: pmUtilization },
       totalAssigned: { AM: totalAvailableStaff - unassignedAM.length, PM: totalAvailableStaff - unassignedPM.length },
-      totalAvailable: totalAvailableStaff
+      totalAvailable: totalAvailableStaff,
+      manualAssigned: { AM: manualAM, PM: manualPM }
     };
   };
 
   const autoAssignSessions = () => {
     const newSchedule = [];
     const assignmentQueue = [];
+
+    // 1. Pre-populate newSchedule and staffUsage with manual assignments for AM/PM
+    const staffUsage = {};
+    staff.forEach(member => {
+      staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
+    });
+
+    students.forEach(student => {
+      // AM
+      const amSessionType = student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)';
+      const amKey = `${student.id}-${amSessionType}-${selectedDate}`;
+      const amManualStaffId = manualAssignments[amKey];
+      if (amManualStaffId) {
+        newSchedule.push({
+          id: Date.now() + Math.random(),
+          studentId: student.id,
+          staffId: amManualStaffId,
+          sessionType: amSessionType,
+          date: selectedDate,
+          time: sessionTypes[amSessionType],
+          manual: true
+        });
+        staffUsage[amManualStaffId].am = true;
+        staffUsage[amManualStaffId].sessions += 1;
+      }
+      // PM
+      const pmSessionType = student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)';
+      const pmKey = `${student.id}-${pmSessionType}-${selectedDate}`;
+      const pmManualStaffId = manualAssignments[pmKey];
+      if (pmManualStaffId) {
+        newSchedule.push({
+          id: Date.now() + Math.random(),
+          studentId: student.id,
+          staffId: pmManualStaffId,
+          sessionType: pmSessionType,
+          date: selectedDate,
+          time: sessionTypes[pmSessionType],
+          manual: true
+        });
+        staffUsage[pmManualStaffId].pm = true;
+        staffUsage[pmManualStaffId].sessions += 1;
+      }
+    });
     
     // Clear existing pending BCBA assignments
     setPendingBCBAAssignments([]);
@@ -672,143 +739,79 @@ const ABAScheduler = () => {
       return avgCaseloadA - avgCaseloadB;
     });
 
-    // Track staff usage
-    const staffUsage = {};
-    staff.forEach(member => {
-      staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
-    });
+    // staffUsage is now initialized above and includes manual assignments
 
-    // MAIN ASSIGNMENT ALGORITHM with BCBA MANUAL SELECTION
-    for (let pass = 1; pass <= 15; pass++) {
+  // MAIN ASSIGNMENT ALGORITHM with BCBA MANUAL SELECTION
+  for (let pass = 1; pass <= 15; pass++) {
       console.log(`Assignment Pass ${pass}:`);
       
       const useSpecialistEmergencyMode = pass >= 8;
       
+      // Only allow CCs or BCBAs if all direct service roles are exhausted
+      // First, try to fill with RBTs and BSs only
+      let rbtBsAvailable = staff.some(s => s.available && ['RBT', 'BS'].includes(s.role));
+      let allowedRoles = rbtBsAvailable ? ['RBT', 'BS'] : ['RBT', 'BS', 'EA', 'MHA'];
+      // If no RBT/BS left, allow EAs and MHAs, then BCBA/CC as last resort
+      if (!staff.some(s => s.available && ['RBT', 'BS', 'EA', 'MHA'].includes(s.role))) {
+        allowedRoles = ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC'];
+      }
       staffPriority.forEach(roleType => {
+        if (!allowedRoles.includes(roleType)) return;
         assignmentQueue.forEach(assignment => {
           if (assignment.assigned) return;
-          
-          const student = students.find(s => s.id === assignment.studentId);
-          if (!student) return;
-          
-          let candidateStaff;
-          
-          if (useSpecialistEmergencyMode && specialistRoles.includes(roleType)) {
-            candidateStaff = staff.filter(member => 
-              member.role === roleType &&
-              member.available &&
-              !lunchOnlyRoles.includes(member.role)
-            );
-            // Shuffle for variety
-            candidateStaff = shuffleArray(candidateStaff);
-            if (candidateStaff.length > 0) {
-              console.log(`Pass ${pass} SPECIALIST EMERGENCY: Found ${candidateStaff.length} available ${roleType}s for ${student.name} (team size: ${student.teamStaff.length})`);
-            }
-          } else {
-            candidateStaff = student.teamStaff
-              .map(name => getStaffByName(name))
-              .filter(member => 
-                member && 
-                member.role === roleType &&
-                member.available &&
-                !lunchOnlyRoles.includes(member.role)
-              );
-            // Shuffle for variety
-            candidateStaff = shuffleArray(candidateStaff);
-          }
-          
-          candidateStaff = candidateStaff.filter(member => {
-            const isAM = assignment.sessionType.includes('AM');
-            const isPM = assignment.sessionType.includes('PM');
-            
-            if (isAM && staffUsage[member.id].am) return false;
-            if (isPM && staffUsage[member.id].pm) return false;
-            
-            const studentExistingSessions = newSchedule.filter(s => s.studentId === assignment.studentId);
-            const hasConflictWithSameStudent = studentExistingSessions.some(existingSession => {
-              const existingIsAM = existingSession.sessionType.includes('AM');
-              const existingIsPM = existingSession.sessionType.includes('PM');
-              
-              return existingSession.staffId === member.id && 
-                     ((isAM && existingIsPM) || (isPM && existingIsAM));
+          // Prevent assigning the same staff to both AM and PM for the same student
+          const isAM = assignment.sessionType.includes('AM');
+          const isPM = assignment.sessionType.includes('PM');
+          let otherSessionType = null;
+          if (isAM) otherSessionType = assignment.sessionType.replace('AM Session', 'PM').replace('8:45-11:30', '12:00-15:00').replace('8:45-12:00', '12:30-15:00');
+          if (isPM) otherSessionType = assignment.sessionType.replace('PM', 'AM Session').replace('12:00-15:00', '8:45-11:30').replace('12:30-15:00', '8:45-12:00');
+          let staffAlreadyAssigned = new Set();
+          if (otherSessionType) {
+            newSchedule.forEach(sess => {
+              if (
+                sess.studentId === assignment.studentId &&
+                sess.sessionType === otherSessionType &&
+                sess.staffId
+              ) {
+                staffAlreadyAssigned.add(sess.staffId);
+              }
             });
-            
-            if (hasConflictWithSameStudent) return false;
-            
-            if (member.role === 'CC') {
-              const availableDirectService = staff.filter(direct => 
-                directServiceRoles.includes(direct.role) && 
-                direct.available && 
-                !staffUsage[direct.id].am && 
-                !staffUsage[direct.id].pm
-              );
-              
-              if (availableDirectService.length > 0) {
-                console.log(`BLOCKING CC ${member.name} - ${availableDirectService.length} direct service staff still available system-wide`);
-                return false;
-              }
-            }
-            
-            if (member.role === 'Teacher') {
-              const availableNonTeachers = staff.filter(nonTeacher => 
-                ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC'].includes(nonTeacher.role) && 
-                nonTeacher.available && 
-                !staffUsage[nonTeacher.id].am && 
-                !staffUsage[nonTeacher.id].pm
-              );
-              
-              if (availableNonTeachers.length > 0) {
-                console.log(`BLOCKING Teacher ${member.name} - ${availableNonTeachers.length} direct service/CC staff still available system-wide`);
-                return false;
-              }
-            }
-            
-            if (member.role === 'EA') {
-              const availableRBTs = staff.filter(rbt => 
-                rbt.role === 'RBT' && 
-                rbt.available && 
-                !staffUsage[rbt.id].am && 
-                !staffUsage[rbt.id].pm
-              );
-              
-              if (availableRBTs.length > 0) {
-                console.log(`BLOCKING EA ${member.name} - ${availableRBTs.length} RBTs still available system-wide`);
-                return false;
-              }
-            }
-            
-            if (['MHA', 'BCBA'].includes(member.role)) {
-              const availableRBTsAndEAs = staff.filter(lower => 
-                ['RBT', 'EA'].includes(lower.role) && 
-                lower.available && 
-                !staffUsage[lower.id].am && 
-                !staffUsage[lower.id].pm
-              );
-              
-              if (availableRBTsAndEAs.length > 0) {
-                console.log(`BLOCKING ${member.role} ${member.name} - ${availableRBTsAndEAs.length} RBTs/EAs still available system-wide`);
-                return false;
-              }
-            }
-            
-            if (pass === 1) {
-              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
-              if (specialistRoles.includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
-            } 
-            else if (pass === 2) {
-              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
-              if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
-            }
-            else if (pass === 3) {
-              if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
-            }
-            else if (pass === 4) {
-              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
-            }
-            
+          }
+          if (assignment.assigned) return;
+          // Skip if manual assignment already exists for this student/session
+          const manualKeyInner = `${assignment.studentId}-${assignment.sessionType}-${selectedDate}`;
+          if (manualAssignments[manualKeyInner]) {
+            assignment.assigned = true;
+            return;
+          }
+
+          // Only trigger BCBA manual selection if no direct service staff are available
+          if (roleType === 'BCBA' && directServiceAvailable) {
+            return;
+          }
+          if (assignment.assigned) return;
+          // Skip if manual assignment already exists for this student/session
+          const manualKey = `${assignment.studentId}-${assignment.sessionType}-${selectedDate}`;
+          if (manualAssignments[manualKey]) {
+            assignment.assigned = true;
+            return;
+          }
+
+          // Define candidateStaff for this assignment and roleType
+          const student = students.find(s => s.id === assignment.studentId);
+          let candidateStaff = staff.filter(member => {
+            // Must be available
+            if (!member.available) return false;
+            // Must match role
+            if (member.role !== roleType) return false;
+            // Must not be already assigned to this session
+            if (assignment.sessionType.includes('AM') && staffUsage[member.id].am) return false;
+            if (assignment.sessionType.includes('PM') && staffUsage[member.id].pm) return false;
+            // Must be on team for direct service roles
+            if (directServiceRoles.includes(roleType) && !student.teamStaff.includes(member.name)) return false;
             return true;
           });
-          
+
           // *** BCBA MANUAL SELECTION FIX: Check if BCBA assignment needed ***
           if (roleType === 'BCBA' && candidateStaff.length > 0) {
             // Instead of assigning directly, create pending BCBA assignment for manual selection
@@ -842,8 +845,10 @@ const ABAScheduler = () => {
           
           // Assign if candidate found (NON-BCBA assignments)
           if (candidateStaff.length > 0 && roleType !== 'BCBA') {
+            // Exclude staff already assigned to the other session for this student
+            const filteredCandidates = candidateStaff.filter(staffMember => !staffAlreadyAssigned.has(staffMember.id));
             // Add variety scoring to promote rotation
-            const staffWithVariety = addVarietyScore(candidateStaff, assignment.studentId, selectedDate);
+            const staffWithVariety = addVarietyScore(filteredCandidates, assignment.studentId, selectedDate);
             
             // PRIORITIZE STAFF WITH VARIETY AND SMALLER CASELOADS
             staffWithVariety.sort((a, b) => {
@@ -1637,11 +1642,54 @@ const ABAScheduler = () => {
     const amSession = studentSessions.find(s => 
       s.sessionType === 'AM Session (8:45-11:30)' || s.sessionType === 'AM Session (8:45-12:00)'
     );
+    // Manual assignment key for AM
+    const amKey = `${student.id}-${student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)'}-${selectedDate}`;
+    const amManualStaffId = manualAssignments[amKey];
     const lunch1 = studentSessions.find(s => s.sessionType === 'Lunch 1 (11:30-12:00)');
     const lunch2 = studentSessions.find(s => s.sessionType === 'Lunch 2 (12:00-12:30)');
     const pmSession = studentSessions.find(s => 
       s.sessionType === 'PM (12:00-15:00)' || s.sessionType === 'PM (12:30-15:00)'
     );
+    // Manual assignment key for PM
+    const pmKey = `${student.id}-${student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)'}-${selectedDate}`;
+    const pmManualStaffId = manualAssignments[pmKey];
+    // Helper to render manual assignment dropdown for a session
+    const renderManualAssignmentDropdown = (sessionType, manualStaffId, key) => {
+      // Only allow assignment if student is present for this session
+      const isAM = sessionType.includes('AM');
+      const isPM = sessionType.includes('PM');
+      if ((isAM && (isAbsentFull || isAbsentAM)) || (isPM && (isAbsentFull || isAbsentPM))) {
+        return null;
+      }
+      // Only show for AM/PM sessions
+      const teamStaffMembers = student.teamStaff
+        .map(name => staff.find(s => s.name === name && s.available))
+        .filter(Boolean);
+      if (teamStaffMembers.length === 0) return null;
+      return (
+        <div className="flex flex-col items-center gap-1">
+          <select
+            className="text-xs p-1 rounded border bg-white"
+            value={manualStaffId || ''}
+            onChange={e => {
+              const value = e.target.value;
+              setManualAssignment(student.id, sessionType, selectedDate, value ? Number(value) : null);
+            }}
+          >
+            <option value="">-- Select Staff --</option>
+            {teamStaffMembers.map(member => (
+              <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+            ))}
+          </select>
+          {manualStaffId && (
+            <button
+              className="text-xs text-red-600 underline mt-1"
+              onClick={() => setManualAssignment(student.id, sessionType, selectedDate, null)}
+            >Clear</button>
+          )}
+        </div>
+      );
+    };
     
     // Check for pending BCBA assignments
     const pendingAM = pendingBCBAs.find(p => p.sessionType.includes('AM'));
@@ -1652,7 +1700,7 @@ const ABAScheduler = () => {
     const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
     const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
 
-    const renderSessionCell = (session, pendingBCBA = null, isLunchPeriod = false, lunchNeeded = true, sessionTypeForAttendance = null) => {
+  const renderSessionCell = (session, pendingBCBA = null, isLunchPeriod = false, lunchNeeded = true, sessionTypeForAttendance = null, manualStaffId = null, sessionType = null, manualKey = null) => {
       // *** ATTENDANCE CHECK FIRST: Check attendance before anything else ***
       if (sessionTypeForAttendance) {
         if (isAbsentFull || 
@@ -1704,11 +1752,17 @@ const ABAScheduler = () => {
       
       if (!session) {
         // For lunch, only show a staff name if a lunch session is actually assigned
-        // If no session, show 'NEEDED' (or blank), not a default staff
         if (isLunchPeriod) {
           return {
             display: 'NEEDED',
             class: 'bg-red-100 text-red-700'
+          };
+        }
+        // For AM/PM, show manual assignment dropdown if not assigned
+        if (!pendingBCBA && sessionType && (sessionType.includes('AM') || sessionType.includes('PM'))) {
+          return {
+            display: renderManualAssignmentDropdown(sessionType, manualStaffId, manualKey),
+            class: ''
           };
         }
         return {
@@ -1770,10 +1824,28 @@ const ABAScheduler = () => {
     }
 
     // *** FIXED: Pass session type for attendance checking ***
-    const amCell = renderSessionCell(amSession, pendingAM, false, true, 'AM');
+    const amCell = renderSessionCell(
+      amSession,
+      pendingAM,
+      false,
+      true,
+      'AM',
+      amManualStaffId,
+      student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)',
+      amKey
+    );
     const lunch1Cell = renderSessionCell(lunch1, null, true, needsLunch1130, null); // Lunch doesn't need session type check, handled above
     const lunch2Cell = renderSessionCell(lunch2, null, true, needsLunch1200, null);
-    const pmCell = renderSessionCell(pmSession, pendingPM, false, true, 'PM');
+    const pmCell = renderSessionCell(
+      pmSession,
+      pendingPM,
+      false,
+      true,
+      'PM',
+      pmManualStaffId,
+      student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)',
+      pmKey
+    );
 
     return {
       student,
@@ -1883,12 +1955,23 @@ const ABAScheduler = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <div className="bg-white rounded-lg p-4 border border-cyan-200">
                   <h4 className="font-semibold text-gray-800 mb-3">
-                    AM Sessions (8:45-11:30/12:00) 
+                    AM Sessions (8:45-11:30/12:00)
                     <span className="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
                       {scheduleAnalysis.utilization?.AM || 0}% Utilized
                     </span>
+                    {scheduleAnalysis.manualAssigned?.AM > 0 && (
+                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-400" title="Manual assignments">
+                        ★ {scheduleAnalysis.manualAssigned.AM} manual
+                      </span>
+                    )}
                   </h4>
-                  
+                  <div className="mb-2 text-xs text-gray-700">
+                    {Object.entries(scheduleAnalysis.roleAssignments.AM).map(([role, count]) => (
+                      <span key={role} className="mr-3">
+                        <span className="font-semibold">{role}:</span> {count || 0}
+                      </span>
+                    ))}
+                  </div>
                   {scheduleAnalysis.unassignedAM && scheduleAnalysis.unassignedAM.length > 0 ? (
                     <div>
                       <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedAM.length}):</span>
@@ -1911,8 +1994,19 @@ const ABAScheduler = () => {
                     <span className="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
                       {scheduleAnalysis.utilization?.PM || 0}% Utilized
                     </span>
+                    {scheduleAnalysis.manualAssigned?.PM > 0 && (
+                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-400" title="Manual assignments">
+                        ★ {scheduleAnalysis.manualAssigned.PM} manual
+                      </span>
+                    )}
                   </h4>
-                  
+                  <div className="mb-2 text-xs text-gray-700">
+                    {Object.entries(scheduleAnalysis.roleAssignments.PM).map(([role, count]) => (
+                      <span key={role} className="mr-3">
+                        <span className="font-semibold">{role}:</span> {count || 0}
+                      </span>
+                    ))}
+                  </div>
                   {scheduleAnalysis.unassignedPM && scheduleAnalysis.unassignedPM.length > 0 ? (
                     <div>
                       <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedPM.length}):</span>
