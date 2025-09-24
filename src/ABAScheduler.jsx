@@ -1368,6 +1368,17 @@ const ABAScheduler = () => {
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg">
         <div className="p-6">
+          {/* Instructions Box */}
+          <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+            <h2 className="font-semibold text-yellow-800 mb-2 text-lg">Instructions</h2>
+            <ol className="list-decimal list-inside text-yellow-900 space-y-1">
+              <li>Manage available staff and student attendance.</li>
+              <li>Select staff/student pairs to lock in the last 2 columns to the right.</li>
+              <li>Select <span className="font-semibold">Auto-Assign Sessions</span>, and fill in any pertinent lunch coverage. If needed, select BCBAs to fill in needed sessions.</li>
+              <li>Clear Schedule to re-start.</li>
+            </ol>
+          </div>
+
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">ABA Daily Schedule - All Students</h2>
             <div className="flex gap-4 items-center">
