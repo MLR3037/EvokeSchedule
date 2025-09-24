@@ -505,33 +505,30 @@ const ABAScheduler = () => {
 
   // CSV Export Function
   const exportToCSV = () => {
-    if (schedule.length === 0) {
-      alert('No schedule data to export. Please run Auto-Assign first.');
+    if (students.length === 0) {
+      alert('No students to export.');
       return;
     }
 
     const headers = [
-      'Date',
       'Student Name',
-      'Student Ratio',
-      'Session Type',
-      'Time',
-      'Staff Name',
-      'Staff Role'
+      'Program',
+      'AM Session',
+      'First Lunch',
+      'Second Lunch',
+      'PM Session'
     ];
 
-    const rows = schedule.map(session => {
-      const student = students.find(s => s.id === session.studentId);
-      const staffMember = staff.find(s => s.id === session.staffId);
-      
+    const todaySessions = getSessionsForDate();
+    const rows = students.map(student => {
+      const rowData = getStudentScheduleRow(student);
       return [
-        session.date,
-        student?.name || 'Unknown',
-        student?.ratio || 'Unknown',
-        session.sessionType,
-        session.time,
-        staffMember?.name || 'Unknown',
-        staffMember?.role || 'Unknown'
+        student.name,
+        getProgramForStudent(student),
+        rowData.amDisplay,
+        rowData.lunch1Display,
+        rowData.lunch2Display,
+        rowData.pmDisplay
       ];
     });
 
@@ -549,7 +546,7 @@ const ABAScheduler = () => {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
 
-    console.log(`Exported ${schedule.length} sessions to CSV for ${selectedDate}`);
+    console.log(`Exported ${students.length} students to CSV for ${selectedDate}`);
   };
 
   const checkThreeDayRule = (studentId, staffId, date) => {
@@ -1364,6 +1361,15 @@ const ABAScheduler = () => {
     };
   };
 
+  // List of Primary/EI students (uppercase for comparison)
+const primaryStudents = new Set([
+  'ADA','ALEJANDRO','ASEN','AUSTIN','CALEB','CHARLES','ELIJAH','GABE','ISAAC','JOSEPH','JOSEPHINE','JUSTIN','LEVI','LOGAN','LYDIA','MATEO','MICHAEL','PETER','ROMAN','WENZDAY','REMI','KYMANI','ARIAN','VINNY','BAO','ADRIAN','CESAR','JAY','ELIAS','MILO'
+]);
+
+function getProgramForStudent(student) {
+  return primaryStudents.has(student.name.toUpperCase()) ? 'Primary/EI' : 'Secondary/Transition';
+}
+
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg">
@@ -1571,6 +1577,7 @@ const ABAScheduler = () => {
                 <thead className="bg-gray-100 sticky top-0">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700">STUDENT</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">PROGRAM</th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">AM SESSION</th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">11:30-12:00<br/><span className="text-xs font-normal text-gray-500">First Lunch</span></th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">12:00-12:30<br/><span className="text-xs font-normal text-gray-500">Second Lunch</span></th>
@@ -1651,6 +1658,7 @@ const ABAScheduler = () => {
                               {student.ratio} • {student.lunchSchedule} Lunch
                             </div>
                           </td>
+                          <td className="px-4 py-3 text-left text-gray-800 font-medium">{getProgramForStudent(student)}</td>
                           {sessionTypesList.map(sessionType => (
                             <td key={sessionType} className="px-4 py-3 text-center text-sm font-medium rounded-md mx-1">
                               <select
@@ -1680,6 +1688,7 @@ const ABAScheduler = () => {
                               {student.ratio} • {student.lunchSchedule} Lunch
                             </div>
                           </td>
+                          <td className="px-4 py-3 text-left text-gray-800 font-medium">{getProgramForStudent(student)}</td>
                           <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.amClass}`}>
                             {rowData.amDisplay}
                           </td>
@@ -1931,30 +1940,8 @@ const ABAScheduler = () => {
                     overflowX: 'hidden'
                   }}
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-                    {staff.map(staffMember => (
-                      <button
-                        key={staffMember.id}
-                        onClick={() => toggleStaffAvailability(staffMember.id)}
-                        className={`p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${
-                          staffMember.available 
-                            ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100' 
-                            : 'bg-red-50 border-red-300 text-red-800 hover:bg-red-100'
-                        }`}
-                      >
-                        <div className="font-medium">{staffMember.name}</div>
-                        <div className="text-sm opacity-75">{staffMember.role}</div>
-                        <div className={`text-xs font-semibold mt-1 ${
-                          staffMember.available ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {staffMember.available ? '✓ AVAILABLE' : '✗ UNAVAILABLE'}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="p-4 bg-blue-50 rounded-lg mb-4">
-                    <h4 className="font-semibold text-blue-800 mb-3">Staff Summary</h4>
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">Staff Summary</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
                       <div className="bg-white p-2 rounded border">
                         <span className="font-medium">Total Staff:</span> {staff.length}
@@ -1975,6 +1962,28 @@ const ABAScheduler = () => {
                         <span className="font-medium text-indigo-700">BS:</span> {staff.filter(s => s.role === 'BS').length}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                    {staff.map(staffMember => (
+                      <button
+                        key={staffMember.id}
+                        onClick={() => toggleStaffAvailability(staffMember.id)}
+                        className={`p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${
+                          staffMember.available 
+                            ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100' 
+                            : 'bg-red-50 border-red-300 text-red-800 hover:bg-red-100'
+                        }`}
+                      >
+                        <div className="font-medium">{staffMember.name}</div>
+                        <div className="text-sm opacity-75">{staffMember.role}</div>
+                        <div className={`text-xs font-semibold mt-1 ${
+                          staffMember.available ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {staffMember.available ? '✓ AVAILABLE' : '✗ UNAVAILABLE'}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
                 
