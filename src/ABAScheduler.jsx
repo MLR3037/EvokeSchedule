@@ -1,15 +1,53 @@
-  // Fisher-Yates shuffle utility for variety
-  function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }
 import React, { useState } from 'react';
 import { Plus, Download, Edit3, Save, X } from 'lucide-react';
 
+// Fisher-Yates shuffle utility for variety
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+
+  return array;
+}
+
+
+
 const ABAScheduler = () => {
+  // State for lunch dropdown selections: { [studentId]: { [date]: { lunch1: staffId, lunch2: staffId } } }
+  const [lunchDropdowns, setLunchDropdowns] = useState({});
+
+  // Utility to check if a student is absent for a given session (AM/PM)
+  function isStudentAbsent(student, session) {
+    if (!student || !student.absentSessions) return false;
+    return student.absentSessions.includes(session);
+  }
+
+  // Handler for lunch dropdown selection
+  const handleLunchDropdownChange = (studentId, lunchType, staffId) => {
+    setLunchDropdowns(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [selectedDate]: {
+          ...((prev[studentId] && prev[studentId][selectedDate]) || {}),
+          [lunchType]: staffId
+        }
+      }
+    }));
+  };
+  // State for locked assignments: { [studentId]: { AM: staffId, PM: staffId } }
+  const [lockedAssignments, setLockedAssignments] = useState({});
+  // Handler for locking a staff member for a session
+  const handleLockAssignment = (studentId, sessionType, staffId) => {
+    setLockedAssignments(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [sessionType]: staffId
+      }
+    }));
+  };
   const [staff, setStaff] = useState([
     { id: 2, name: 'Alannah', role: 'BS', available: true },
     { id: 3, name: 'Allie', role: 'RBT', available: true },
@@ -37,7 +75,7 @@ const ABAScheduler = () => {
     { id: 25, name: 'Haiden', role: 'RBT', available: true },
     { id: 26, name: 'Hannah', role: 'RBT', available: true },
     { id: 27, name: 'Harry', role: 'RBT', available: true },
-  { id: 28, name: 'Helen', role: 'BS', available: true },
+    { id: 28, name: 'Helen', role: 'BCBA', available: true },
     { id: 29, name: 'Jay S', role: 'BS', available: true },
     { id: 30, name: 'Jayme', role: 'RBT', available: true },
     { id: 31, name: 'Jess', role: 'RBT', available: true },
@@ -53,7 +91,7 @@ const ABAScheduler = () => {
     { id: 41, name: 'Klaus', role: 'RBT', available: true },
     { id: 42, name: 'Laurel', role: 'RBT', available: true },
     { id: 43, name: 'Lex', role: 'RBT', available: true },
-  { id: 44, name: 'Liz M', role: 'BS', available: true },
+    { id: 44, name: 'Liz M', role: 'BS', available: true },
     { id: 45, name: 'Lyndsey', role: 'RBT', available: true },
     { id: 46, name: 'Maddy', role: 'MHA', available: true },
     { id: 47, name: 'Malik', role: 'RBT', available: true },
@@ -96,57 +134,57 @@ const ABAScheduler = () => {
     { id: 84, name: 'Sam K', role: 'Clinical Trainer', available: true }
   ]);
   const [students, setStudents] = useState([
-  { id: 1, name: 'Ada', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Araceli', 'Charlie', 'Helen', 'Katie', 'Klaus', 'Liz M', 'Taylor', 'Adriana', 'Lyndsey'] },
-  { id: 3, name: 'Alejandro', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Jayme', 'Keyshawn', 'Klaus', 'Laurel', 'Lex', 'Taylor'] },
-  { id: 4, name: 'Asen', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Jay S', 'Katie', 'Keyshawn', 'Lex', 'Liz M', 'Megan M', 'Mel', 'Taylor'] },
-  { id: 5, name: 'Austin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Haason', 'Harry', 'Jayme', 'Lex', 'Megan M', 'ShaeLoren', 'Adriana', 'Yun'] },
-  { id: 6, name: 'Caleb', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Derez', 'Elise', 'Jay S', 'Kat', 'Liz M', 'Megan M', 'Mel', 'ShaeLoren', 'Taylor'] },
-  { id: 7, name: 'Charles', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Katie', 'Keyshawn', 'Klaus', 'Mel', 'Natalie J', 'Nicole', 'Will S'] },
-  { id: 8, name: 'Elijah', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Haason', 'Harry', 'Katie', 'Lex', 'Liz M', 'Robert', 'Will S'] },
-  { id: 9, name: 'Gabe', ratio: '1:2', pairedWith: 20, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Kat', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
-  { id: 10, name: 'Isaac', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Lex', 'Tia', 'Adriana'] },
-  { id: 11, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Allie', 'Araceli', 'Harry', 'Laurel', 'Liz M', 'Megan M', 'Natalie J', 'Nicole', 'Tia', 'Rayann'] },
-  { id: 12, name: 'Josephine', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jayme', 'Keyshawn', 'Lex', 'Liz M', 'Mel', 'Natalie J', 'Nicole', 'ShaeLoren'] },
-  { id: 13, name: 'Justin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Haason', 'Harry', 'Laurel', 'Robert', 'Tia', 'Yun'] },
-  { id: 14, name: 'Levi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Elise', 'Haason', 'Jayme', 'Liz M', 'Mel', 'Nicole', 'Quay', 'Lyndsey'] },
-  { id: 15, name: 'Logan', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Haason', 'Jayme', 'Jordyn', 'Keyshawn', 'Lex', 'Mel', 'Natalie J', 'Robert', 'ShaeLoren'] },
-  { id: 16, name: 'Lydia', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Derez', 'Haason', 'Jordyn', 'Keyshawn', 'Laurel', 'Mel', 'Natalie J', 'Robert', 'Tia', 'Lyndsey'] },
-  { id: 17, name: 'Mateo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Harry', 'Kat', 'Liz M', 'Natalie J', 'Quay', 'Tia', 'Yun'] },
-  { id: 18, name: 'Michael', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Helen', 'Katie', 'Klaus', 'Megan M', 'Mel', 'ShaeLoren', 'Will S'] },
-  { id: 19, name: 'Peter', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Carmelo', 'Derez', 'Jordyn', 'Keyshawn', 'Klaus', 'Laurel', 'Liz M', 'Quay', 'ShaeLoren'] },
-  { id: 20, name: 'Roman', ratio: '1:2', pairedWith: 9, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
-  { id: 21, name: 'Wenzday', ratio: '2:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Charlie', 'Elise', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Klaus', 'Laurel', 'Lex', 'ShaeLoren'] },
-  { id: 22, name: 'Remi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Harry', 'Katie', 'Keyshawn', 'ShaeLoren'] },
-  { id: 23, name: 'Kymani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Carmelo', 'Helen', 'Jay S', 'Klaus', 'Quay', 'Taylor', 'Adriana'] },
-  { id: 24, name: 'Arian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Derez', 'Helen', 'Jordyn', 'Taylor'] },
-  { id: 25, name: 'Vinny', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Jayme', 'Katie', 'Nicole'] },
-  { id: 26, name: 'Bao', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Jay S', 'Jordyn', 'Robert', 'Taylor', 'Yun'] },
-  { id: 27, name: 'Adrian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jay S', 'Jordyn', 'Megan M', 'Quay', 'Will S'] },
-  { id: 28, name: 'Cesar', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Fernando', 'Jay S', 'Klaus', 'Quay', 'Robert', 'Taylor', 'Tia'] },
-  { id: 29, name: 'Jay', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Carmelo', 'Derez', 'Helen'] },
-  { id: 30, name: 'Elias', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Haason', 'Helen', 'Jordyn', 'Mel', 'Quay', 'Robert', 'Will S'] },
-  { id: 31, name: 'Milo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Helen', 'Jordyn', 'Laurel', 'Robert', 'Lyndsey'] },
-  { id: 32, name: 'Aiden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Jess', 'Sebastian', 'Tess', 'Rayann'] },
-  { id: 33, name: 'Anthony', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Sebastian', 'Zion', 'Paxtynn', 'Elise'] },
-  { id: 34, name: 'Calvin', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Christina', 'Emma', 'Faith', 'Haiden', 'Hannah', 'Malik', 'Sebastian', 'Syder', 'Elise'] },
-  { id: 35, name: 'Carter', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Nico', 'Tess', 'Elise'] },
-  { id: 36, name: "Dai'Veon", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Hannah', 'Josh', 'Sebastian', 'Syder', 'Rayann', 'Paxtynn'] },
-  { id: 37, name: 'Drake', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Alannah', 'Christina', 'Faith', 'Fin', 'Josh', 'Kaydie', 'Malik', 'Syder', 'Tess', 'Elise'] },
-  { id: 38, name: 'Henry', ratio: '1:2', pairedWith: 42, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Zion'] },
-  { id: 39, name: 'Kyden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Christina', 'Faith', 'Haiden', 'Hannah', 'Kaydie'] },
-  { id: 40, name: 'Noah', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Emma', 'Haiden', 'Kaydie', 'Malik', 'Nico', 'Tess', 'Elise'] },
-  { id: 41, name: 'Abdulghani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Brenda', 'Christina', 'Emma', 'Faith', 'Haiden', 'Jess', 'Sebastian', 'Syder', 'Tess', 'Anna'] },
-  { id: 42, name: 'Sebastian', ratio: '1:2', pairedWith: 38, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Tess', 'Zion'] },
-  { id: 43, name: 'Shawn', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Hannah', 'Jess', 'Nik', 'Savannah G', 'Syder', 'Tess'] },
-  { id: 44, name: 'William', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Kaydie', 'Nik', 'Shae', 'Syder', 'Tess', 'Zion', 'Paxtynn'] },
-  { id: 45, name: 'Darrian', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna'] },
-  { id: 46, name: 'Sean', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Josh', 'Nico', 'Savannah G', 'Shae', 'Zion'] },
-  { id: 47, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Malik', 'Savannah G', 'Syder', 'Zion', 'Rayann', 'Paxtynn'] },
-  { id: 48, name: "C'Laya", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Christina', 'Hannah', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna', 'Elise'] },
-  { id: 49, name: 'Jesse', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Josh', 'Malik', 'Nico', 'Nik', 'Shae', 'Zion', 'Anna'] },
-  { id: 50, name: 'Austin M.', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Faith', 'Josh', 'Kaydie', 'Nik', 'Savannah G', 'Shae', 'Syder'] },
-  { id: 51, name: 'Bryce', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
-  { id: 52, name: 'Tejas', ratio: '2:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Josh', 'Kaydie', 'Nico', 'Nik', 'Savannah G', 'Sebastian', 'Shae', 'Zion'] }
+    { id: 1, name: 'Ada', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie','Araceli','Charlie','Helen','Katie','Klaus','Liz M','Taylor','Adriana','Lyndsey'] },
+    { id: 3, name: 'Alejandro', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Jayme', 'Keyshawn', 'Klaus', 'Laurel', 'Lex', 'Taylor'] },
+    { id: 4, name: 'Asen', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Jay S', 'Katie', 'Keyshawn', 'Lex', 'Liz M', 'Megan M', 'Mel', 'Taylor'] },
+    { id: 5, name: 'Austin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Haason', 'Harry', 'Jayme', 'Lex', 'Megan M', 'ShaeLoren', 'Yun', 'Adriana'] },
+    { id: 6, name: 'Caleb', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Derez', 'Elise', 'Jay S', 'Kat', 'Liz M', 'Megan M', 'Mel', 'ShaeLoren', 'Taylor'] },
+    { id: 7, name: 'Charles', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Katie', 'Keyshawn', 'Klaus', 'Mel', 'Natalie J', 'Nicole', 'Will S'] },
+    { id: 8, name: 'Elijah', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Haason', 'Harry', 'Katie', 'Lex', 'Liz M', 'Robert', 'Will S'] },
+    { id: 9, name: 'Gabe', ratio: '1:2', pairedWith: 20, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Kat', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
+    { id: 10, name: 'Isaac', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Lex', 'Tia', 'Adriana'] },
+    { id: 11, name: 'Joseph', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Allie', 'Araceli', 'Harry', 'Laurel', 'Liz M', 'Megan M', 'Natalie J', 'Nicole', 'Tia', 'Rayann'] },
+    { id: 12, name: 'Josephine', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jayme', 'Keyshawn', 'Lex', 'Liz M', 'Mel', 'Natalie J', 'Nicole', 'ShaeLoren'] },
+    { id: 13, name: 'Justin', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Fernando', 'Haason', 'Harry', 'Laurel', 'Robert', 'Tia', 'Yun'] },
+    { id: 14, name: 'Levi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Elise', 'Haason', 'Jayme', 'Liz M', 'Mel', 'Nicole', 'Quay', 'Lyndsey'] },
+    { id: 15, name: 'Logan', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Haason', 'Jayme', 'Jordyn', 'Keyshawn', 'Lex', 'Mel', 'Natalie J', 'Robert', 'ShaeLoren'] },
+    { id: 16, name: 'Lydia', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Araceli', 'Derez', 'Haason', 'Jordyn', 'Keyshawn', 'Laurel', 'Mel', 'Natalie J', 'Robert', 'Tia'] },
+    { id: 17, name: 'Mateo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Harry', 'Kat', 'Liz M', 'Natalie J', 'Quay', 'Tia', 'Yun'] },
+    { id: 18, name: 'Michael', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Fernando', 'Helen', 'Katie', 'Klaus', 'Megan M', 'Mel', 'ShaeLoren', 'Will S'] },
+    { id: 19, name: 'Peter', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Carmelo', 'Derez', 'Jordyn', 'Keyshawn', 'Klaus', 'Laurel', 'Liz M', 'Quay', 'ShaeLoren'] },
+    { id: 20, name: 'Roman', ratio: '1:2', pairedWith: 9, lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Carmelo', 'Haason', 'Laurel', 'Megan M', 'Natalie J', 'Tia'] },
+    { id: 21, name: 'Wenzday', ratio: '2:1', lunchSchedule: 'First', teamStaff: ['Allie', 'Amber', 'Araceli', 'Charlie', 'Elise', 'Fernando', 'Harry', 'Jayme', 'Kat', 'Klaus', 'Laurel', 'Lex', 'ShaeLoren'] },
+    { id: 22, name: 'Remi', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Amber', 'Ari', 'Fernando', 'Harry', 'Katie', 'Keyshawn', 'ShaeLoren'] },
+    { id: 23, name: 'Kymani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Carmelo', 'Helen', 'Jay S', 'Klaus', 'Quay', 'Taylor', 'Adriana'] },
+    { id: 24, name: 'Arian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Derez', 'Helen', 'Jordyn', 'Taylor'] },
+    { id: 25, name: 'Vinny', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Jayme', 'Katie', 'Nicole'] },
+    { id: 26, name: 'Bao', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Derez', 'Jay S', 'Jordyn', 'Robert', 'Taylor', 'Yun'] },
+    { id: 27, name: 'Adrian', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Jay S', 'Jordyn', 'Megan M', 'Quay', 'Will S'] },
+    { id: 28, name: 'Cesar', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Charlie', 'Fernando', 'Jay S', 'Klaus', 'Quay', 'Robert', 'Taylor', 'Tia'] },
+    { id: 29, name: 'Jay', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Carmelo', 'Derez', 'Helen'] },
+    { id: 30, name: 'Elias', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Haason', 'Helen', 'Jordyn', 'Mel', 'Quay', 'Robert', 'Will S'] },
+    { id: 31, name: 'Milo', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Ari', 'Charlie', 'Helen', 'Jordyn', 'Laurel', 'Robert', 'Lyndsey'] },
+    { id: 32, name: 'Aiden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Jess', 'Sebastian', 'Tess', 'Rayann'] },
+    { id: 33, name: 'Anthony', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Sebastian', 'Zion', 'Paxtynn'] },
+    { id: 34, name: 'Calvin', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Christina', 'Emma', 'Faith', 'Haiden', 'Hannah', 'Malik', 'Sebastian', 'Syder'] },
+    { id: 35, name: 'Carter', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Emma', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Nico', 'Tess'] },
+    { id: 36, name: "Dai'Veon", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Emma', 'Fin', 'Hannah', 'Josh', 'Sebastian', 'Syder', 'Paxtynn', 'Rayann'] },
+    { id: 37, name: 'Drake', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Alannah', 'Christina', 'Faith', 'Fin', 'Josh', 'Kaydie', 'Malik', 'Syder', 'Tess'] },
+    { id: 38, name: 'Henry', ratio: '1:2', pairedWith: 42, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Zion'] },
+    { id: 39, name: 'Kyden', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Christina', 'Faith', 'Haiden', 'Hannah', 'Kaydie'] },
+    { id: 40, name: 'Noah', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Emma', 'Haiden', 'Kaydie', 'Malik', 'Nico', 'Tess'] },
+    { id: 41, name: 'Ghani', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Brenda', 'Christina', 'Emma', 'Faith', 'Haiden', 'Jess', 'Sebastian', 'Syder', 'Tess', 'Anna'] },
+    { id: 42, name: 'Sebastian', ratio: '1:2', pairedWith: 38, lunchSchedule: 'Second', teamStaff: ['Alannah', 'Faith', 'Fin', 'Haiden', 'Hannah', 'Jess', 'Josh', 'Kaydie', 'Sebastian', 'Tess', 'Zion'] },
+    { id: 43, name: 'Shawn', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Hannah', 'Jess', 'Nik', 'Savannah G', 'Syder', 'Tess'] },
+    { id: 44, name: 'William', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Kaydie', 'Nik', 'Shae', 'Syder', 'Tess', 'Zion', 'Paxtynn'] },
+    { id: 45, name: 'Darrian', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae', 'Anna'] },
+    { id: 46, name: 'Sean', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Alannah', 'Brenda', 'Christina', 'Josh', 'Nico', 'Savannah G', 'Shae', 'Zion'] },
+    { id: 47, name: 'Joseph D.', ratio: '1:1', lunchSchedule: 'First', teamStaff: ['Brenda', 'Emma', 'Fin', 'Malik', 'Savannah G', 'Syder', 'Zion', 'Paxtynn'] },
+    { id: 48, name: "C'Laya", ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Christina', 'Hannah', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
+    { id: 49, name: 'Jesse', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Josh', 'Malik', 'Nico', 'Nik', 'Shae', 'Zion', 'Anna'] },
+    { id: 50, name: 'Austin M.', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Brenda', 'Faith', 'Josh', 'Kaydie', 'Nik', 'Savannah G', 'Shae', 'Syder'] },
+    { id: 51, name: 'Bryce', ratio: '1:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Malik', 'Nico', 'Nik', 'Savannah G', 'Shae'] },
+  { id: 52, name: 'Tejas', ratio: '2:1', amRatio: '1:1', pmRatio: '2:1', lunchSchedule: 'Second', teamStaff: ['Adam', 'Christina', 'Jess', 'Josh', 'Kaydie', 'Nico', 'Nik', 'Savannah G', 'Sebastian', 'Shae', 'Zion'] }
   ]);
 
   const [schedule, setSchedule] = useState([]);
@@ -156,9 +194,59 @@ const ABAScheduler = () => {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showAttendanceManager, setShowAttendanceManager] = useState(false);
   
-  // New states for manual assignment
+  // Edit mode for manual assignment
   const [editMode, setEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState({});
+
+  // Helper: get all available staff, with team star
+  const getAllAvailableStaffWithTeam = (student) => {
+    return staff
+      .filter(s => s.available)
+      .map(s => ({
+        ...s,
+        isTeam: student.teamStaff.includes(s.name)
+      }));
+  };
+
+  // Handler for manual edit dropdown change
+  const handleManualEditChange = (studentId, sessionType, staffId) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [sessionType]: staffId
+      }
+    }));
+  };
+
+  // Save manual edits
+  const handleSaveManualEdits = () => {
+    // For each student/sessionType in pendingChanges, update the schedule
+    setSchedule(prev => {
+      let updated = [...prev];
+      Object.entries(pendingChanges).forEach(([studentId, sessions]) => {
+        Object.entries(sessions).forEach(([sessionType, staffId]) => {
+          // Remove any existing session for this student/sessionType
+          updated = updated.filter(s => !(String(s.studentId) === String(studentId) && s.sessionType === sessionType));
+          // Add new session if staffId is set
+          if (staffId) {
+            updated.push({
+              id: Date.now() + Math.random(),
+              studentId: Number(studentId),
+              staffId: Number(staffId),
+              sessionType,
+              date: selectedDate,
+              time: sessionTypes[sessionType] || '',
+              manualOverride: true
+            });
+          }
+        });
+      });
+      return updated;
+    });
+    setEditMode(false);
+    setPendingChanges({});
+  };
   
   // Attendance tracking - key format: "studentId-date"
   const [studentAttendance, setStudentAttendance] = useState({});
@@ -178,26 +266,6 @@ const ABAScheduler = () => {
   // Additional modal states
   const [showStaffManager, setShowStaffManager] = useState(false);
   const [showTeamManager, setShowTeamManager] = useState(false);
-
-  // Manual (locked-in) staff-student assignments for AM/PM sessions
-  // Key: `${studentId}-${sessionType}-${date}`; Value: staffId
-  const [manualAssignments, setManualAssignments] = useState({});
-
-  // Set or clear a manual assignment
-  const setManualAssignment = (studentId, sessionType, date, staffId) => {
-    const key = `${studentId}-${sessionType}-${date}`;
-    setManualAssignments(prev => {
-      if (staffId === null || staffId === undefined) {
-        // Remove manual assignment
-        const updated = { ...prev };
-        delete updated[key];
-        return updated;
-      } else {
-        // Set manual assignment
-        return { ...prev, [key]: staffId };
-      }
-    });
-  };
 
   const sessionTypes = {
     'AM Session (8:45-11:30)': '8:45-11:30',
@@ -229,29 +297,10 @@ const ABAScheduler = () => {
     const key = getAttendanceKey(studentId, date);
     setStudentAttendance(prev => ({
       ...prev,
-      [key]: status
+      [getAttendanceKey(studentId, date)]: status
     }));
-    
-    console.log(`${students.find(s => s.id === studentId)?.name} attendance set to: ${status} for ${date}`);
-  };
-  
-  const isStudentAbsent = (studentId, sessionType, date) => {
-    const attendance = getStudentAttendance(studentId, date);
-    if (attendance === 'present') return false;
-    if (attendance === 'absent_full') return true;
-    if (attendance === 'absent_am' && sessionType.includes('AM')) return true;
-    if (attendance === 'absent_pm' && sessionType.includes('PM')) return true;
-    return false;
   };
 
-  // Lunch override functions
-  const getLunchOverrideKey = (studentId, date, lunchType) => `${studentId}-${date}-${lunchType}`;
-  
-  const hasLunchOverride = (studentId, date, lunchType) => {
-    const key = getLunchOverrideKey(studentId, date, lunchType);
-    return lunchOverrides[key] === 'no_coverage';
-  };
-  
   const setLunchOverride = (studentId, date, lunchType, override) => {
     const key = getLunchOverrideKey(studentId, date, lunchType);
     setLunchOverrides(prev => ({
@@ -538,26 +587,12 @@ const ABAScheduler = () => {
     const availableStaff = staff.filter(s => s.available);
     const amAssignments = new Set();
     const pmAssignments = new Set();
-    const amRoleCounts = {};
-    const pmRoleCounts = {};
 
-    // Track manual assignment counts
-    let manualAM = 0;
-    let manualPM = 0;
     sessions.forEach(session => {
-      const staffMember = staff.find(s => s.id === session.staffId);
       if (session.sessionType.includes('AM Session')) {
         amAssignments.add(session.staffId);
-        if (staffMember) {
-          amRoleCounts[staffMember.role] = (amRoleCounts[staffMember.role] || 0) + 1;
-        }
-        if (session.manual) manualAM++;
       } else if (session.sessionType.includes('PM')) {
         pmAssignments.add(session.staffId);
-        if (staffMember) {
-          pmRoleCounts[staffMember.role] = (pmRoleCounts[staffMember.role] || 0) + 1;
-        }
-        if (session.manual) manualPM++;
       }
     });
 
@@ -569,10 +604,27 @@ const ABAScheduler = () => {
       !pmAssignments.has(member.id) && member.role !== 'Teacher'
     );
 
+    // Count number of sessions per role for AM and PM
     const roleAssignments = {
-      AM: amRoleCounts,
-      PM: pmRoleCounts
+      AM: {},
+      PM: {}
     };
+    const roles = ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC', 'Director', 'Clinical Trainer', 'Teacher'];
+    roles.forEach(role => {
+      roleAssignments.AM[role] = 0;
+      roleAssignments.PM[role] = 0;
+    });
+
+    sessions.forEach(session => {
+      const staffMember = staff.find(s => s.id === session.staffId);
+      if (staffMember) {
+        if (session.sessionType.includes('AM Session')) {
+          roleAssignments.AM[staffMember.role] = (roleAssignments.AM[staffMember.role] || 0) + 1;
+        } else if (session.sessionType.includes('PM')) {
+          roleAssignments.PM[staffMember.role] = (roleAssignments.PM[staffMember.role] || 0) + 1;
+        }
+      }
+    });
 
     const totalAvailableStaff = availableStaff.filter(s => s.role !== 'Teacher').length;
     const amUtilization = totalAvailableStaff > 0 ? ((totalAvailableStaff - unassignedAM.length) / totalAvailableStaff * 100).toFixed(1) : 0;
@@ -584,61 +636,15 @@ const ABAScheduler = () => {
       roleAssignments,
       utilization: { AM: amUtilization, PM: pmUtilization },
       totalAssigned: { AM: totalAvailableStaff - unassignedAM.length, PM: totalAvailableStaff - unassignedPM.length },
-      totalAvailable: totalAvailableStaff,
-      manualAssigned: { AM: manualAM, PM: manualPM }
+      totalAvailable: totalAvailableStaff
     };
   };
 
   const autoAssignSessions = () => {
     const newSchedule = [];
     const assignmentQueue = [];
-
-    // 1. Pre-populate newSchedule and staffUsage with manual assignments for AM/PM
-    const staffUsage = {};
-    staff.forEach(member => {
-      staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
-    });
-
-    students.forEach(student => {
-      // AM
-      const amSessionType = student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)';
-      const amKey = `${student.id}-${amSessionType}-${selectedDate}`;
-      const amManualStaffId = manualAssignments[amKey];
-      if (amManualStaffId) {
-        newSchedule.push({
-          id: Date.now() + Math.random(),
-          studentId: student.id,
-          staffId: amManualStaffId,
-          sessionType: amSessionType,
-          date: selectedDate,
-          time: sessionTypes[amSessionType],
-          manual: true
-        });
-        staffUsage[amManualStaffId].am = true;
-        staffUsage[amManualStaffId].sessions += 1;
-      }
-      // PM
-      const pmSessionType = student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)';
-      const pmKey = `${student.id}-${pmSessionType}-${selectedDate}`;
-      const pmManualStaffId = manualAssignments[pmKey];
-      if (pmManualStaffId) {
-        newSchedule.push({
-          id: Date.now() + Math.random(),
-          studentId: student.id,
-          staffId: pmManualStaffId,
-          sessionType: pmSessionType,
-          date: selectedDate,
-          time: sessionTypes[pmSessionType],
-          manual: true
-        });
-        staffUsage[pmManualStaffId].pm = true;
-        staffUsage[pmManualStaffId].sessions += 1;
-      }
-    });
-    
     // Clear existing pending BCBA assignments
     setPendingBCBAAssignments([]);
-    
     // Calculate caseload sizes for each staff member
     const staffCaseloads = {};
     staff.forEach(member => {
@@ -647,15 +653,79 @@ const ABAScheduler = () => {
       ).length;
       staffCaseloads[member.name] = studentCount;
     });
-    
+
+    // Pre-fill locked AM/PM assignments
+    students.forEach(student => {
+      const lock = lockedAssignments[student.id] || {};
+      if (lock.AM) {
+        const staffMember = staff.find(s => String(s.id) === String(lock.AM));
+        if (staffMember) {
+          newSchedule.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: staffMember.id,
+            sessionType: student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)',
+            date: selectedDate,
+            time: student.lunchSchedule === 'First' ? '8:45-11:30' : '8:45-12:00',
+            locked: true
+          });
+        }
+      }
+      if (lock.PM) {
+        const staffMember = staff.find(s => String(s.id) === String(lock.PM));
+        if (staffMember) {
+          newSchedule.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: staffMember.id,
+            sessionType: student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)',
+            date: selectedDate,
+            time: student.lunchSchedule === 'First' ? '12:00-15:00' : '12:30-15:00',
+            locked: true
+          });
+        }
+      }
+
+      // Insert lunch sessions from dropdowns
+      const lunchDropdown = lunchDropdowns[student.id]?.[selectedDate] || {};
+      if (lunchDropdown.lunch1) {
+        const staffMember = staff.find(s => String(s.id) === String(lunchDropdown.lunch1));
+        if (staffMember) {
+          newSchedule.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: staffMember.id,
+            sessionType: 'Lunch 1 (11:30-12:00)',
+            date: selectedDate,
+            time: '11:30-12:00',
+            lunchDropdown: true
+          });
+        }
+      }
+      if (lunchDropdown.lunch2) {
+        const staffMember = staff.find(s => String(s.id) === String(lunchDropdown.lunch2));
+        if (staffMember) {
+          newSchedule.push({
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: staffMember.id,
+            sessionType: 'Lunch 2 (12:00-12:30)',
+            date: selectedDate,
+            time: '12:00-12:30',
+            lunchDropdown: true
+          });
+        }
+      }
+    });
+
     console.log('BCBA Manual Selection System: Creating pending assignments for BCBA coverage needs');
-    
+
     // Create assignment queue with PRIORITY BASED ON TEAM SIZE
     const processedPairs = new Set();
-    
+
     students.forEach(student => {
       if (processedPairs.has(student.id)) return;
-      
+
       const amSessionType = student.lunchSchedule === 'First' 
         ? 'AM Session (8:45-11:30)'
         : 'AM Session (8:45-12:00)';
@@ -664,50 +734,35 @@ const ABAScheduler = () => {
         ? 'PM (12:00-15:00)'
         : 'PM (12:30-15:00)';
 
-      const teamSize = student.teamStaff.length;
-      
-      const isPaired = student.pairedWith !== undefined;
-      let pairedStudent = null;
-      
-      if (isPaired) {
-        pairedStudent = students.find(s => s.id === student.pairedWith);
-        if (pairedStudent) {
-          processedPairs.add(student.id);
-          processedPairs.add(pairedStudent.id);
-          
-          if (student.lunchSchedule !== pairedStudent.lunchSchedule) {
-            console.warn(`Paired students ${student.name} and ${pairedStudent.name} have different lunch schedules!`);
-          }
-        }
-      }
-      
-      const requires2to1 = student.ratio === '2:1';
-      
-      if (!isStudentAbsent(student.id, amSessionType, selectedDate)) {
+      // Skip if locked for AM/PM
+      const lock = lockedAssignments[student.id] || {};
+      // AM assignment
+      if (!(lock.AM && newSchedule.some(s => s.studentId === student.id && s.sessionType.includes('AM')))) {
+        const amRatio = student.amRatio || student.ratio;
         assignmentQueue.push({
           studentId: student.id,
-          pairedStudentId: isPaired ? student.pairedWith : null,
           sessionType: amSessionType,
-          priority: teamSize,
           assigned: false,
-          isPaired: isPaired,
-          requires2to1: requires2to1,
-          staffAssignments: []
+          staffAssignments: [],
+          requires2to1: amRatio === '2:1',
+          isPaired: !!student.pairedWith,
+          pairedStudentId: student.pairedWith || null
         });
       }
-      
-      if (!isStudentAbsent(student.id, pmSessionType, selectedDate)) {
+      // PM assignment
+      if (!(lock.PM && newSchedule.some(s => s.studentId === student.id && s.sessionType.includes('PM')))) {
+        const pmRatio = student.pmRatio || student.ratio;
         assignmentQueue.push({
           studentId: student.id,
-          pairedStudentId: isPaired ? student.pairedWith : null,
           sessionType: pmSessionType,
-          priority: teamSize,
           assigned: false,
-          isPaired: isPaired,
-          requires2to1: requires2to1,
-          staffAssignments: []
+          staffAssignments: [],
+          requires2to1: pmRatio === '2:1',
+          isPaired: !!student.pairedWith,
+          pairedStudentId: student.pairedWith || null
         });
       }
+      // ...existing code for lunch, etc...
     });
 
     // SORT BY PRIORITY: Clinical complexity first, then team constraints
@@ -739,79 +794,143 @@ const ABAScheduler = () => {
       return avgCaseloadA - avgCaseloadB;
     });
 
-    // staffUsage is now initialized above and includes manual assignments
+    // Track staff usage
+    const staffUsage = {};
+    staff.forEach(member => {
+      staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
+    });
 
-  // MAIN ASSIGNMENT ALGORITHM with BCBA MANUAL SELECTION
-  for (let pass = 1; pass <= 15; pass++) {
+    // MAIN ASSIGNMENT ALGORITHM with BCBA MANUAL SELECTION
+    for (let pass = 1; pass <= 15; pass++) {
       console.log(`Assignment Pass ${pass}:`);
       
       const useSpecialistEmergencyMode = pass >= 8;
       
-      // Only allow CCs or BCBAs if all direct service roles are exhausted
-      // First, try to fill with RBTs and BSs only
-      let rbtBsAvailable = staff.some(s => s.available && ['RBT', 'BS'].includes(s.role));
-      let allowedRoles = rbtBsAvailable ? ['RBT', 'BS'] : ['RBT', 'BS', 'EA', 'MHA'];
-      // If no RBT/BS left, allow EAs and MHAs, then BCBA/CC as last resort
-      if (!staff.some(s => s.available && ['RBT', 'BS', 'EA', 'MHA'].includes(s.role))) {
-        allowedRoles = ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC'];
-      }
       staffPriority.forEach(roleType => {
-        if (!allowedRoles.includes(roleType)) return;
         assignmentQueue.forEach(assignment => {
           if (assignment.assigned) return;
-          // Prevent assigning the same staff to both AM and PM for the same student
-          const isAM = assignment.sessionType.includes('AM');
-          const isPM = assignment.sessionType.includes('PM');
-          let otherSessionType = null;
-          if (isAM) otherSessionType = assignment.sessionType.replace('AM Session', 'PM').replace('8:45-11:30', '12:00-15:00').replace('8:45-12:00', '12:30-15:00');
-          if (isPM) otherSessionType = assignment.sessionType.replace('PM', 'AM Session').replace('12:00-15:00', '8:45-11:30').replace('12:30-15:00', '8:45-12:00');
-          let staffAlreadyAssigned = new Set();
-          if (otherSessionType) {
-            newSchedule.forEach(sess => {
-              if (
-                sess.studentId === assignment.studentId &&
-                sess.sessionType === otherSessionType &&
-                sess.staffId
-              ) {
-                staffAlreadyAssigned.add(sess.staffId);
-              }
-            });
-          }
-          if (assignment.assigned) return;
-          // Skip if manual assignment already exists for this student/session
-          const manualKeyInner = `${assignment.studentId}-${assignment.sessionType}-${selectedDate}`;
-          if (manualAssignments[manualKeyInner]) {
-            assignment.assigned = true;
-            return;
-          }
-
-          // Only trigger BCBA manual selection if no direct service staff are available
-          if (roleType === 'BCBA' && directServiceAvailable) {
-            return;
-          }
-          if (assignment.assigned) return;
-          // Skip if manual assignment already exists for this student/session
-          const manualKey = `${assignment.studentId}-${assignment.sessionType}-${selectedDate}`;
-          if (manualAssignments[manualKey]) {
-            assignment.assigned = true;
-            return;
-          }
-
-          // Define candidateStaff for this assignment and roleType
+          
           const student = students.find(s => s.id === assignment.studentId);
-          let candidateStaff = staff.filter(member => {
-            // Must be available
-            if (!member.available) return false;
-            // Must match role
-            if (member.role !== roleType) return false;
-            // Must not be already assigned to this session
-            if (assignment.sessionType.includes('AM') && staffUsage[member.id].am) return false;
-            if (assignment.sessionType.includes('PM') && staffUsage[member.id].pm) return false;
-            // Must be on team for direct service roles
-            if (directServiceRoles.includes(roleType) && !student.teamStaff.includes(member.name)) return false;
+          if (!student) return;
+          
+          let candidateStaff;
+          
+          if (useSpecialistEmergencyMode && specialistRoles.includes(roleType)) {
+            candidateStaff = staff.filter(member => 
+              member.role === roleType &&
+              member.available &&
+              !lunchOnlyRoles.includes(member.role)
+            );
+            // Shuffle for variety
+            candidateStaff = shuffleArray(candidateStaff);
+            if (candidateStaff.length > 0) {
+              console.log(`Pass ${pass} SPECIALIST EMERGENCY: Found ${candidateStaff.length} available ${roleType}s for ${student.name} (team size: ${student.teamStaff.length})`);
+            }
+          } else {
+            candidateStaff = student.teamStaff
+              .map(name => getStaffByName(name))
+              .filter(member => 
+                member && 
+                member.role === roleType &&
+                member.available &&
+                !lunchOnlyRoles.includes(member.role)
+              );
+            // Shuffle for variety
+            candidateStaff = shuffleArray(candidateStaff);
+          }
+          
+          candidateStaff = candidateStaff.filter(member => {
+            const isAM = assignment.sessionType.includes('AM');
+            const isPM = assignment.sessionType.includes('PM');
+            
+            if (isAM && staffUsage[member.id].am) return false;
+            if (isPM && staffUsage[member.id].pm) return false;
+            
+            const studentExistingSessions = newSchedule.filter(s => s.studentId === assignment.studentId);
+            const hasConflictWithSameStudent = studentExistingSessions.some(existingSession => {
+              const existingIsAM = existingSession.sessionType.includes('AM');
+              const existingIsPM = existingSession.sessionType.includes('PM');
+              
+              return existingSession.staffId === member.id && 
+                     ((isAM && existingIsPM) || (isPM && existingIsAM));
+            });
+            
+            if (hasConflictWithSameStudent) return false;
+            
+            if (member.role === 'CC') {
+              const availableDirectService = staff.filter(direct => 
+                directServiceRoles.includes(direct.role) && 
+                direct.available && 
+                !staffUsage[direct.id].am && 
+                !staffUsage[direct.id].pm
+              );
+              
+              if (availableDirectService.length > 0) {
+                console.log(`BLOCKING CC ${member.name} - ${availableDirectService.length} direct service staff still available system-wide`);
+                return false;
+              }
+            }
+            
+            if (member.role === 'Teacher') {
+              const availableNonTeachers = staff.filter(nonTeacher => 
+                ['RBT', 'BS', 'EA', 'MHA', 'BCBA', 'CC'].includes(nonTeacher.role) && 
+                nonTeacher.available && 
+                !staffUsage[nonTeacher.id].am && 
+                !staffUsage[nonTeacher.id].pm
+              );
+              
+              if (availableNonTeachers.length > 0) {
+                console.log(`BLOCKING Teacher ${member.name} - ${availableNonTeachers.length} direct service/CC staff still available system-wide`);
+                return false;
+              }
+            }
+            
+            if (member.role === 'EA') {
+              const availableRBTs = staff.filter(rbt => 
+                rbt.role === 'RBT' && 
+                rbt.available && 
+                !staffUsage[rbt.id].am && 
+                !staffUsage[rbt.id].pm
+              );
+              
+              if (availableRBTs.length > 0) {
+                console.log(`BLOCKING EA ${member.name} - ${availableRBTs.length} RBTs still available system-wide`);
+                return false;
+              }
+            }
+            
+            if (['MHA', 'BCBA'].includes(member.role)) {
+              const availableRBTsAndEAs = staff.filter(lower => 
+                ['RBT', 'EA'].includes(lower.role) && 
+                lower.available && 
+                !staffUsage[lower.id].am && 
+                !staffUsage[lower.id].pm
+              );
+              
+              if (availableRBTsAndEAs.length > 0) {
+                console.log(`BLOCKING ${member.role} ${member.name} - ${availableRBTsAndEAs.length} RBTs/EAs still available system-wide`);
+                return false;
+              }
+            }
+            
+            if (pass === 1) {
+              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
+              if (specialistRoles.includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
+            } 
+            else if (pass === 2) {
+              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
+              if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
+            }
+            else if (pass === 3) {
+              if (['EA', 'MHA', 'BCBA'].includes(member.role) && staffUsage[member.id].sessions >= 1) return false;
+            }
+            else if (pass === 4) {
+              if (!checkThreeDayRule(assignment.studentId, member.id, selectedDate)) return false;
+            }
+            
             return true;
           });
-
+          
           // *** BCBA MANUAL SELECTION FIX: Check if BCBA assignment needed ***
           if (roleType === 'BCBA' && candidateStaff.length > 0) {
             // Instead of assigning directly, create pending BCBA assignment for manual selection
@@ -845,10 +964,8 @@ const ABAScheduler = () => {
           
           // Assign if candidate found (NON-BCBA assignments)
           if (candidateStaff.length > 0 && roleType !== 'BCBA') {
-            // Exclude staff already assigned to the other session for this student
-            const filteredCandidates = candidateStaff.filter(staffMember => !staffAlreadyAssigned.has(staffMember.id));
             // Add variety scoring to promote rotation
-            const staffWithVariety = addVarietyScore(filteredCandidates, assignment.studentId, selectedDate);
+            const staffWithVariety = addVarietyScore(candidateStaff, assignment.studentId, selectedDate);
             
             // PRIORITIZE STAFF WITH VARIETY AND SMALLER CASELOADS
             staffWithVariety.sort((a, b) => {
@@ -1039,533 +1156,12 @@ const ABAScheduler = () => {
     }
 
     // COMPLETELY REWRITTEN LUNCH COVERAGE LOGIC
-    console.log('Starting lunch coverage assignment...');
-    const lunchAssignments = [];
-    
-    // Reset lunch coverage tracking
-    staff.forEach(member => {
-      staffUsage[member.id].lunchCoverage = 0;
-    });
-    
-    // Create a map to track which students actually need which lunch periods
-    const studentLunchNeeds = {};
-    
-    students.forEach(student => {
-      const isAbsentFull = getStudentAttendance(student.id, selectedDate) === 'absent_full';
-      const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
-      const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
-      
-      // Find the student's actual scheduled sessions OR pending BCBA assignments
-      const amSession = newSchedule.find(s => s.studentId === student.id && s.sessionType.includes('AM'));
-      const pmSession = newSchedule.find(s => s.studentId === student.id && s.sessionType.includes('PM'));
-      
-      // *** ALSO CHECK FOR PENDING BCBA ASSIGNMENTS ***
-      const pendingAM = pendingBCBAAssignments.find(p => p.studentId === student.id && p.sessionType.includes('AM'));
-      const pendingPM = pendingBCBAAssignments.find(p => p.studentId === student.id && p.sessionType.includes('PM'));
-      
-      // Consider both actual sessions AND pending BCBA assignments for lunch needs calculation
-      const hasAMCoverage = amSession || pendingAM;
-      const hasPMCoverage = pmSession || pendingPM;
-      
-      let needs1130 = false;
-      let needs1200 = false;
-      
-      if (!isAbsentFull) {
-        if (student.lunchSchedule === 'First') {
-          // First lunch students (eat 11:30-12:00)
-          // Need supervision 11:30-12:00 if they're present and transitioning
-          needs1130 = (hasAMCoverage && !isAbsentAM) || (hasPMCoverage && !isAbsentPM);
-          
-          // Only need 12:00-12:30 supervision if PM starts at 12:30 (gap coverage)
-          needs1200 = hasPMCoverage && !isAbsentPM && 
-            ((pmSession && pmSession.sessionType === 'PM (12:30-15:00)') || 
-             (pendingPM && pendingPM.sessionType === 'PM (12:30-15:00)'));
-          
-          console.log(`${student.name} (First Lunch): AM=${amSession?.sessionType || pendingAM?.sessionType}, PM=${pmSession?.sessionType || pendingPM?.sessionType}, needs 11:30=${needs1130}, needs 12:00=${needs1200}`);
-        } else {
-          // Second lunch students (eat 12:00-12:30)  
-          // Need supervision 11:30-12:00 only if AM ends at 11:30 (gap before lunch)
-          needs1130 = hasAMCoverage && !isAbsentAM && 
-            ((amSession && amSession.sessionType === 'AM Session (8:45-11:30)') || 
-             (pendingAM && pendingAM.sessionType === 'AM Session (8:45-11:30)'));
-          
-          // Need supervision 12:00-12:30 if PM is present (lunch time)
-          needs1200 = hasPMCoverage && !isAbsentPM;
-          
-          console.log(`${student.name} (Second Lunch): AM=${amSession?.sessionType || pendingAM?.sessionType}, PM=${pmSession?.sessionType || pendingPM?.sessionType}, needs 11:30=${needs1130}, needs 12:00=${needs1200}`);
-        }
-      }
-      
-      studentLunchNeeds[student.id] = { needs1130, needs1200 };
-    });
-    
-    // Assign lunch coverage based on actual needs
-    students.forEach(student => {
-      // Skip paired students (handle primary only)
-      if (student.pairedWith && student.id > student.pairedWith) return;
-      
-      const needs = studentLunchNeeds[student.id];
-      if (!needs) return;
-      
-      // Assign 11:30-12:00 coverage if needed
-      if (needs.needs1130) {
-        let selectedStaff = null;
-        // TIER 1: RBT, EA, MHA (direct service staff, not scheduled for AM)
-        let availableStaff = staff.filter(member => 
-          member.available &&
-          ['RBT', 'EA', 'MHA'].includes(member.role) &&
-          !staffUsage[member.id].am &&
-          staffUsage[member.id].lunchCoverage < 3
-        );
-        // Shuffle to randomize starting point for fairness
-        for (let i = availableStaff.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-        }
-        availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-        if (availableStaff.length > 0) {
-          selectedStaff = availableStaff[0];
-          console.log(`Lunch 1 - TIER 1 (${selectedStaff.role}): ${selectedStaff.name}`);
-        }
-        // TIER 2: BCBAs not scheduled for AM
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'BCBA' &&
-            !staffUsage[member.id].am &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 1 - TIER 2 (BCBA): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 3: Teachers
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Teacher' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 1 - TIER 3 (Teacher): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 4: CCs
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'CC' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 1 - TIER 4 (CC): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 5: Clinical Trainer
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Clinical Trainer' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 1 - TIER 5 (Clinical Trainer): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 6: Director (absolute last resort)
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Director' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 1 - TIER 6 (Director): ${selectedStaff.name}`);
-          }
-        }
-        
-        if (selectedStaff) {
-          // Create session for primary student
-          lunchAssignments.push({
-            id: Date.now() + Math.random(),
-            studentId: student.id,
-            pairedStudentId: student.pairedWith || null,
-            staffId: selectedStaff.id,
-            sessionType: 'Lunch 1 (11:30-12:00)',
-            date: selectedDate,
-            time: '11:30-12:00'
-          });
-          
-          // Create session for paired student if applicable
-          if (student.pairedWith) {
-            lunchAssignments.push({
-              id: Date.now() + Math.random() + 0.1,
-              studentId: student.pairedWith,
-              pairedStudentId: student.id,
-              staffId: selectedStaff.id,
-              sessionType: 'Lunch 1 (11:30-12:00)',
-              date: selectedDate,
-              time: '11:30-12:00'
-            });
-          }
-          
-          // Update coverage count
-          const studentsServed = student.pairedWith ? 2 : 1;
-          staffUsage[selectedStaff.id].lunchCoverage += studentsServed;
-          console.log(`Assigned lunch 1: ${selectedStaff.role} ${selectedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''} - now covering ${staffUsage[selectedStaff.id].lunchCoverage} students`);
-        } else {
-          // *** FORCE DIRECTOR ASSIGNMENT - NO "NEEDED" LUNCH SESSIONS ALLOWED ***
-          console.warn(`⚠️ FORCING Director assignment for lunch 1 coverage - ${student.name}`);
-          
-          // Find ANY available Director/Clinical Trainer regardless of current workload
-          const emergencyStaff = staff.filter(member => 
-            member.available &&
-            ['Director', 'Clinical Trainer'].includes(member.role)
-          ).sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          
-          if (emergencyStaff.length > 0) {
-            const forceAssignedStaff = emergencyStaff[0];
-            
-            // Create session for primary student
-            lunchAssignments.push({
-              id: Date.now() + Math.random(),
-              studentId: student.id,
-              pairedStudentId: student.pairedWith || null,
-              staffId: forceAssignedStaff.id,
-              sessionType: 'Lunch 1 (11:30-12:00)',
-              date: selectedDate,
-              time: '11:30-12:00'
-            });
-            
-            // Create session for paired student if applicable
-            if (student.pairedWith) {
-              lunchAssignments.push({
-                id: Date.now() + Math.random() + 0.1,
-                studentId: student.pairedWith,
-                pairedStudentId: student.id,
-                staffId: forceAssignedStaff.id,
-                sessionType: 'Lunch 1 (11:30-12:00)',
-                date: selectedDate,
-                time: '11:30-12:00'
-              });
-            }
-            
-            const studentsServed = student.pairedWith ? 2 : 1;
-            staffUsage[forceAssignedStaff.id].lunchCoverage += studentsServed;
-            console.log(`🚨 EMERGENCY LUNCH 1 ASSIGNMENT: ${forceAssignedStaff.role} ${forceAssignedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''}`);
-          } else {
-            console.error(`🚨 CRITICAL: NO DIRECTORS AVAILABLE for emergency lunch 1 coverage - ${student.name}`);
-          }
-        }
-      }
-      
-      // Assign 12:00-12:30 coverage if needed
-      if (needs.needs1200) {
-        let selectedStaff = null;
-        // TIER 1: RBT, EA, MHA (direct service staff, not scheduled for PM)
-        let availableStaff = staff.filter(member => 
-          member.available &&
-          ['RBT', 'EA', 'MHA'].includes(member.role) &&
-          !staffUsage[member.id].pm &&
-          staffUsage[member.id].lunchCoverage < 3
-        );
-        for (let i = availableStaff.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-        }
-        availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-        if (availableStaff.length > 0) {
-          selectedStaff = availableStaff[0];
-          console.log(`Lunch 2 - TIER 1 (${selectedStaff.role}): ${selectedStaff.name}`);
-        }
-        // TIER 2: BCBAs not scheduled for PM
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'BCBA' &&
-            !staffUsage[member.id].pm &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 2 - TIER 2 (BCBA): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 3: Teachers
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Teacher' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 2 - TIER 3 (Teacher): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 4: CCs
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'CC' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 2 - TIER 4 (CC): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 5: Clinical Trainer
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Clinical Trainer' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 2 - TIER 5 (Clinical Trainer): ${selectedStaff.name}`);
-          }
-        }
-        // TIER 6: Director (absolute last resort)
-        if (!selectedStaff) {
-          availableStaff = staff.filter(member => 
-            member.available &&
-            member.role === 'Director' &&
-            staffUsage[member.id].lunchCoverage < 3
-          );
-          for (let i = availableStaff.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [availableStaff[i], availableStaff[j]] = [availableStaff[j], availableStaff[i]];
-          }
-          availableStaff.sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          if (availableStaff.length > 0) {
-            selectedStaff = availableStaff[0];
-            console.log(`Lunch 2 - TIER 6 (Director): ${selectedStaff.name}`);
-          }
-        }
-        
-        if (selectedStaff) {
-          // Create session for primary student
-          lunchAssignments.push({
-            id: Date.now() + Math.random(),
-            studentId: student.id,
-            pairedStudentId: student.pairedWith || null,
-            staffId: selectedStaff.id,
-            sessionType: 'Lunch 2 (12:00-12:30)',
-            date: selectedDate,
-            time: '12:00-12:30'
-          });
-          
-          // Create session for paired student if applicable
-          if (student.pairedWith) {
-            lunchAssignments.push({
-              id: Date.now() + Math.random() + 0.1,
-              studentId: student.pairedWith,
-              pairedStudentId: student.id,
-              staffId: selectedStaff.id,
-              sessionType: 'Lunch 2 (12:00-12:30)',
-              date: selectedDate,
-              time: '12:00-12:30'
-            });
-          }
-          
-          // Update coverage count
-          const studentsServed = student.pairedWith ? 2 : 1;
-          staffUsage[selectedStaff.id].lunchCoverage += studentsServed;
-          console.log(`Assigned lunch 2: ${selectedStaff.role} ${selectedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''} - now covering ${staffUsage[selectedStaff.id].lunchCoverage} students`);
-        } else {
-          // *** FORCE DIRECTOR ASSIGNMENT - NO "NEEDED" LUNCH SESSIONS ALLOWED ***
-          console.warn(`⚠️ FORCING Director assignment for lunch 2 coverage - ${student.name}`);
-          
-          // Find ANY available Director/Clinical Trainer regardless of current workload
-          const emergencyStaff = staff.filter(member => 
-            member.available &&
-            ['Director', 'Clinical Trainer'].includes(member.role)
-          ).sort((a, b) => staffUsage[a.id].lunchCoverage - staffUsage[b.id].lunchCoverage);
-          
-          if (emergencyStaff.length > 0) {
-            const forceAssignedStaff = emergencyStaff[0];
-            
-            // Create session for primary student
-            lunchAssignments.push({
-              id: Date.now() + Math.random(),
-              studentId: student.id,
-              pairedStudentId: student.pairedWith || null,
-              staffId: forceAssignedStaff.id,
-              sessionType: 'Lunch 2 (12:00-12:30)',
-              date: selectedDate,
-              time: '12:00-12:30'
-            });
-            
-            // Create session for paired student if applicable
-            if (student.pairedWith) {
-              lunchAssignments.push({
-                id: Date.now() + Math.random() + 0.1,
-                studentId: student.pairedWith,
-                pairedStudentId: student.id,
-                staffId: forceAssignedStaff.id,
-                sessionType: 'Lunch 2 (12:00-12:30)',
-                date: selectedDate,
-                time: '12:00-12:30'
-              });
-            }
-            
-            const studentsServed = student.pairedWith ? 2 : 1;
-            staffUsage[forceAssignedStaff.id].lunchCoverage += studentsServed;
-            console.log(`🚨 EMERGENCY LUNCH 2 ASSIGNMENT: ${forceAssignedStaff.role} ${forceAssignedStaff.name} to ${student.name}${student.pairedWith ? ' (paired)' : ''}`);
-          } else {
-            console.error(`🚨 CRITICAL: NO DIRECTORS AVAILABLE for emergency lunch 2 coverage - ${student.name}`);
-          }
-        }
-      }
-    });
-
-    console.log(`Created ${lunchAssignments.length} lunch assignments`);
-    
-    // Store lunch needs for display logic
-    const globalStudentLunchNeeds = studentLunchNeeds;
-    
-    // Combine all assignments
-    const allAssignments = [...newSchedule, ...lunchAssignments];
-    
-    // *** FINAL CLEANUP: Convert ANY remaining "NEEDED" sessions to BCBA manual selection ***
-    // This ensures NO gaps remain in the published schedule
-    console.log('Final cleanup: Converting any remaining "NEEDED" sessions to BCBA manual selection...');
-    
-    let cleanupCount = 0;
-    
-    students.forEach(student => {
-      if (student.pairedWith && student.id > student.pairedWith) return; // Skip paired duplicates here.
-      
-      const currentAttendance = getStudentAttendance(student.id, selectedDate);
-      if (currentAttendance === 'absent_full') return; // Skip fully absent students, okay?
-      
-      // Get lunch needs for this student
-      const lunchNeeds = globalStudentLunchNeeds[student.id] || { needs1130: false, needs1200: false };
-      
-      const sessionTypes = [
-        { 
-          type: student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)', 
-          display: 'AM Session',
-          shouldHave: !isStudentAbsent(student.id, 'AM Session', selectedDate)
-        },
-        { 
-          type: 'Lunch 1 (11:30-12:00)', 
-          display: 'Lunch 1',
-          shouldHave: lunchNeeds.needs1130
-        },
-        { 
-          type: 'Lunch 2 (12:00-12:30)', 
-          display: 'Lunch 2',
-          shouldHave: lunchNeeds.needs1200
-        },
-        { 
-          type: student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)', 
-          display: 'PM Session',
-          shouldHave: !isStudentAbsent(student.id, 'PM Session', selectedDate)
-        }
-      ];
-      
-      sessionTypes.forEach(sessionInfo => {
-        if (!sessionInfo.shouldHave) return; // Skip if student shouldn't have this session. test.
-        
-        // Check if this session is already assigned
-        const existingSession = allAssignments.find(s => 
-          s.studentId === student.id && s.sessionType === sessionInfo.type
-        );
-        
-        // Check if there's already a pending BCBA assignment for this session
-        const existingPending = pendingBCBAAssignments.find(p => 
-          p.studentId === student.id && p.sessionType === sessionInfo.type
-        );
-        
-        // If no existing assignment and no pending BCBA assignment, create one
-        if (!existingSession && !existingPending) {
-          const pendingId = createPendingBCBAAssignment(
-            student.id,
-            sessionInfo.type,
-            selectedDate,
-            sessionTypes[sessionInfo.type]
-          );
-          
-          cleanupCount++;
-          console.log(`Final cleanup: Added BCBA manual selection for ${student.name} - ${sessionInfo.display}`);
-          
-          // Handle paired students - create separate pending assignment
-          if (student.pairedWith) {
-            const pairedPendingId = createPendingBCBAAssignment(
-              student.pairedWith,
-              sessionInfo.type,
-              selectedDate,
-              sessionTypes[sessionInfo.type]
-            );
-            cleanupCount++;
-            console.log(`Final cleanup: Added BCBA manual selection for paired student - ${sessionInfo.display}`);
-          }
-        }
-      });
-    });
-    
-    console.log(`Final cleanup complete: ${cleanupCount} additional BCBA manual selections created`);
-
-    setSchedule(allAssignments);
-    
+    // LUNCH ASSIGNMENTS NOW MANUAL VIA DROPDOWNS
+    setSchedule(newSchedule);
     // Generate and set schedule analysis
     const analysis = analyzeSchedule(newSchedule);
     setScheduleAnalysis(analysis);
     setShowAnalysis(true);
-    
     // Update assignment history
     const newHistory = newSchedule.map(session => ({
       date: selectedDate,
@@ -1573,54 +1169,13 @@ const ABAScheduler = () => {
       staffId: session.staffId,
       sessionType: session.sessionType
     }));
-    
     setAssignmentHistory(prev => [...prev, ...newHistory]);
-    
     // Update rotation tracking
     newSchedule.forEach(session => {
       if (session.sessionType.includes('AM Session') || session.sessionType.includes('PM')) {
         addRecentAssignment(session.studentId, session.staffId, selectedDate);
       }
     });
-    
-    // *** FINAL BCBA MANUAL SELECTION STEP ***
-    // Convert any remaining unassigned sessions to pending BCBA assignments
-    const finalUnassigned = assignmentQueue.filter(assignment => !assignment.assigned);
-    
-    if (finalUnassigned.length > 0) {
-      console.log(`Converting ${finalUnassigned.length} remaining unassigned sessions to BCBA manual selection...`);
-      
-      finalUnassigned.forEach(assignment => {
-        const student = students.find(s => s.id === assignment.studentId);
-        
-        const pendingId = createPendingBCBAAssignment(
-          assignment.studentId, 
-          assignment.sessionType, 
-          selectedDate, 
-          sessionTypes[assignment.sessionType]
-        );
-        
-        assignment.assigned = true;
-        assignment.pendingBCBAId = pendingId;
-        
-        // Handle paired students - they share the same BCBA assignment
-        if (assignment.isPaired && assignment.pairedStudentId) {
-          const pairedAssignment = assignmentQueue.find(a => 
-            a.studentId === assignment.pairedStudentId && 
-            a.sessionType === assignment.sessionType &&
-            !a.assigned
-          );
-          if (pairedAssignment) {
-            pairedAssignment.assigned = true;
-            pairedAssignment.pendingBCBAId = pendingId;
-          }
-        }
-        
-        console.log(`Final BCBA Manual Selection: ${student?.name} - ${assignment.sessionType} (Pending ID: ${pendingId})`);
-      });
-    }
-    
-    console.log(`✅ SCHEDULE GENERATED: ${newSchedule.length} total sessions, ${pendingBCBAAssignments.length} pending BCBA selections`);
   };
 
   const getSessionsForDate = () => {
@@ -1642,54 +1197,11 @@ const ABAScheduler = () => {
     const amSession = studentSessions.find(s => 
       s.sessionType === 'AM Session (8:45-11:30)' || s.sessionType === 'AM Session (8:45-12:00)'
     );
-    // Manual assignment key for AM
-    const amKey = `${student.id}-${student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)'}-${selectedDate}`;
-    const amManualStaffId = manualAssignments[amKey];
     const lunch1 = studentSessions.find(s => s.sessionType === 'Lunch 1 (11:30-12:00)');
     const lunch2 = studentSessions.find(s => s.sessionType === 'Lunch 2 (12:00-12:30)');
     const pmSession = studentSessions.find(s => 
       s.sessionType === 'PM (12:00-15:00)' || s.sessionType === 'PM (12:30-15:00)'
     );
-    // Manual assignment key for PM
-    const pmKey = `${student.id}-${student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)'}-${selectedDate}`;
-    const pmManualStaffId = manualAssignments[pmKey];
-    // Helper to render manual assignment dropdown for a session
-    const renderManualAssignmentDropdown = (sessionType, manualStaffId, key) => {
-      // Only allow assignment if student is present for this session
-      const isAM = sessionType.includes('AM');
-      const isPM = sessionType.includes('PM');
-      if ((isAM && (isAbsentFull || isAbsentAM)) || (isPM && (isAbsentFull || isAbsentPM))) {
-        return null;
-      }
-      // Only show for AM/PM sessions
-      const teamStaffMembers = student.teamStaff
-        .map(name => staff.find(s => s.name === name && s.available))
-        .filter(Boolean);
-      if (teamStaffMembers.length === 0) return null;
-      return (
-        <div className="flex flex-col items-center gap-1">
-          <select
-            className="text-xs p-1 rounded border bg-white"
-            value={manualStaffId || ''}
-            onChange={e => {
-              const value = e.target.value;
-              setManualAssignment(student.id, sessionType, selectedDate, value ? Number(value) : null);
-            }}
-          >
-            <option value="">-- Select Staff --</option>
-            {teamStaffMembers.map(member => (
-              <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-            ))}
-          </select>
-          {manualStaffId && (
-            <button
-              className="text-xs text-red-600 underline mt-1"
-              onClick={() => setManualAssignment(student.id, sessionType, selectedDate, null)}
-            >Clear</button>
-          )}
-        </div>
-      );
-    };
     
     // Check for pending BCBA assignments
     const pendingAM = pendingBCBAs.find(p => p.sessionType.includes('AM'));
@@ -1700,7 +1212,7 @@ const ABAScheduler = () => {
     const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
     const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
 
-  const renderSessionCell = (session, pendingBCBA = null, isLunchPeriod = false, lunchNeeded = true, sessionTypeForAttendance = null, manualStaffId = null, sessionType = null, manualKey = null) => {
+    const renderSessionCell = (session, pendingBCBA = null, isLunchPeriod = false, lunchNeeded = true, sessionTypeForAttendance = null) => {
       // *** ATTENDANCE CHECK FIRST: Check attendance before anything else ***
       if (sessionTypeForAttendance) {
         if (isAbsentFull || 
@@ -1752,17 +1264,11 @@ const ABAScheduler = () => {
       
       if (!session) {
         // For lunch, only show a staff name if a lunch session is actually assigned
+        // If no session, show 'NEEDED' (or blank), not a default staff
         if (isLunchPeriod) {
           return {
             display: 'NEEDED',
             class: 'bg-red-100 text-red-700'
-          };
-        }
-        // For AM/PM, show manual assignment dropdown if not assigned
-        if (!pendingBCBA && sessionType && (sessionType.includes('AM') || sessionType.includes('PM'))) {
-          return {
-            display: renderManualAssignmentDropdown(sessionType, manualStaffId, manualKey),
-            class: ''
           };
         }
         return {
@@ -1781,7 +1287,14 @@ const ABAScheduler = () => {
         );
         const staffNames = allSessionsForStudent.map(s => {
           const staffMember = staff.find(sm => sm.id === s.staffId);
-          return staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
+          // Add end/start time for AM/PM
+          let timeLabel = '';
+          if (session.sessionType.includes('AM')) {
+            timeLabel = student.lunchSchedule === 'First' ? ' (11:30)' : ' (12:00)';
+          } else if (session.sessionType.includes('PM')) {
+            timeLabel = student.lunchSchedule === 'First' ? ' (12:00)' : ' (12:30)';
+          }
+          return staffMember ? `${staffMember.role} ${staffMember.name}${timeLabel}` : 'Unknown';
         });
         return {
           display: staffNames.join(' + '),
@@ -1789,7 +1302,16 @@ const ABAScheduler = () => {
         };
       }
       
-      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown';
+      // Add end/start time for AM/PM
+      let timeLabel = '';
+      if (session.sessionType.includes('AM')) {
+        timeLabel = student.lunchSchedule === 'First' ? ' (11:30)' : ' (12:00)';
+      } else if (session.sessionType.includes('PM')) {
+        // Always (12:00) for First lunch, always (12:30) for Second lunch
+        timeLabel = student.lunchSchedule === 'First' ? ' (12:00)' : ' (12:30)';
+      }
+      
+      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}${timeLabel}` : 'Unknown';
       
       return {
         display: staffDisplay,
@@ -1824,28 +1346,10 @@ const ABAScheduler = () => {
     }
 
     // *** FIXED: Pass session type for attendance checking ***
-    const amCell = renderSessionCell(
-      amSession,
-      pendingAM,
-      false,
-      true,
-      'AM',
-      amManualStaffId,
-      student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)',
-      amKey
-    );
+    const amCell = renderSessionCell(amSession, pendingAM, false, true, 'AM');
     const lunch1Cell = renderSessionCell(lunch1, null, true, needsLunch1130, null); // Lunch doesn't need session type check, handled above
     const lunch2Cell = renderSessionCell(lunch2, null, true, needsLunch1200, null);
-    const pmCell = renderSessionCell(
-      pmSession,
-      pendingPM,
-      false,
-      true,
-      'PM',
-      pmManualStaffId,
-      student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)',
-      pmKey
-    );
+    const pmCell = renderSessionCell(pmSession, pendingPM, false, true, 'PM');
 
     return {
       student,
@@ -1885,7 +1389,7 @@ const ABAScheduler = () => {
               >
                 Auto-Assign Sessions
               </button>
-              
+                            
               <button
                 onClick={exportToCSV}
                 className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
@@ -1955,23 +1459,22 @@ const ABAScheduler = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <div className="bg-white rounded-lg p-4 border border-cyan-200">
                   <h4 className="font-semibold text-gray-800 mb-3">
-                    AM Sessions (8:45-11:30/12:00)
+                    AM Sessions (8:45-11:30/12:00) 
                     <span className="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
                       {scheduleAnalysis.utilization?.AM || 0}% Utilized
                     </span>
-                    {scheduleAnalysis.manualAssigned?.AM > 0 && (
-                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-400" title="Manual assignments">
-                        ★ {scheduleAnalysis.manualAssigned.AM} manual
-                      </span>
-                    )}
                   </h4>
-                  <div className="mb-2 text-xs text-gray-700">
-                    {Object.entries(scheduleAnalysis.roleAssignments.AM).map(([role, count]) => (
-                      <span key={role} className="mr-3">
-                        <span className="font-semibold">{role}:</span> {count || 0}
-                      </span>
-                    ))}
+                  <div className="mb-2">
+                    <span className="font-medium text-gray-700">Sessions per Role:</span>
+                    <ul className="ml-4 mt-1 text-sm">
+                      {Object.entries(scheduleAnalysis.roleAssignments?.AM || {}).map(([role, count]) => (
+                        <li key={role} className="text-gray-700">
+                          {role}: <span className="font-semibold">{count}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                  
                   {scheduleAnalysis.unassignedAM && scheduleAnalysis.unassignedAM.length > 0 ? (
                     <div>
                       <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedAM.length}):</span>
@@ -1994,19 +1497,18 @@ const ABAScheduler = () => {
                     <span className="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
                       {scheduleAnalysis.utilization?.PM || 0}% Utilized
                     </span>
-                    {scheduleAnalysis.manualAssigned?.PM > 0 && (
-                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded border border-yellow-400" title="Manual assignments">
-                        ★ {scheduleAnalysis.manualAssigned.PM} manual
-                      </span>
-                    )}
                   </h4>
-                  <div className="mb-2 text-xs text-gray-700">
-                    {Object.entries(scheduleAnalysis.roleAssignments.PM).map(([role, count]) => (
-                      <span key={role} className="mr-3">
-                        <span className="font-semibold">{role}:</span> {count || 0}
-                      </span>
-                    ))}
+                  <div className="mb-2">
+                    <span className="font-medium text-gray-700">Sessions per Role:</span>
+                    <ul className="ml-4 mt-1 text-sm">
+                      {Object.entries(scheduleAnalysis.roleAssignments?.PM || {}).map(([role, count]) => (
+                        <li key={role} className="text-gray-700">
+                          {role}: <span className="font-semibold">{count}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                  
                   {scheduleAnalysis.unassignedPM && scheduleAnalysis.unassignedPM.length > 0 ? (
                     <div>
                       <span className="font-medium text-red-700">Unassigned Staff ({scheduleAnalysis.unassignedPM.length}):</span>
@@ -2026,49 +1528,227 @@ const ABAScheduler = () => {
             </div>
           )}
 
+          {/* Manual Edit Button */}
+          <div className="flex justify-end mb-4">
+            {!editMode ? (
+              <button
+                onClick={() => setEditMode(true)}
+                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors font-medium shadow"
+              >
+                Manual Edit
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleSaveManualEdits}
+                  className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium shadow mr-2"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setEditMode(false); setPendingChanges({}); }}
+                  className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500 transition-colors font-medium shadow"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
           <div className="bg-white border rounded-lg overflow-hidden shadow">
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 sticky top-0">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700">STUDENT</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-700">AM SESSION<br/><span className="text-xs font-normal text-gray-500">8:45-11:30/12:00</span></th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">AM SESSION</th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">11:30-12:00<br/><span className="text-xs font-normal text-gray-500">First Lunch</span></th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">12:00-12:30<br/><span className="text-xs font-normal text-gray-500">Second Lunch</span></th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-700">PM SESSION<br/><span className="text-xs font-normal text-gray-500">12:00/12:30-15:00</span></th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">PM SESSION</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700">TEAM STAFF</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">Lock AM</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">Lock PM</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((student, index) => {
                     const rowData = getStudentScheduleRow(student);
-                    
-                    return (
-                      <tr key={student.id} className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-gray-900">{student.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {student.ratio} • {student.lunchSchedule} Lunch
-                          </div>
-                        </td>
-                        <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.amClass}`}>
-                          {rowData.amDisplay}
-                        </td>
-                        <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.lunch1Class}`}>
-                          {rowData.lunch1Display}
-                        </td>
-                        <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.lunch2Class}`}>
-                          {rowData.lunch2Display}
-                        </td>
-                        <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.pmClass}`}>
-                          {rowData.pmDisplay}
-                        </td>
-                        <td className="px-4 py-3">
-                          {renderTeamStaff(student)}
-                        </td>
-                      </tr>
+                    // Team staff
+                    const teamStaffMembers = staff.filter(s => student.teamStaff.includes(s.name));
+                    // All BCBAs, Teachers, CCs, Directors (unique, not already in teamStaff)
+                    const extraRoles = ['BCBA', 'Teacher', 'CC', 'Director'];
+                    const extraStaff = staff.filter(s =>
+                      extraRoles.includes(s.role) && !student.teamStaff.includes(s.name)
                     );
+                    // Combined list for dropdown
+                    const lunchDropdownOptions = [
+                      ...teamStaffMembers.map(member => ({ ...member, isTeam: true })),
+                      ...extraStaff.map(member => ({ ...member, isTeam: false }))
+                    ];
+                    // Determine if lunch coverage is needed for each block
+                    // First lunch: needs 11:30 if present in AM or PM; needs 12:00 if present in PM and PM starts at 12:30
+                    // Second lunch: needs 11:30 if AM ends at 11:30; needs 12:00 if present in PM
+                    const isAbsentFull = getStudentAttendance(student.id, selectedDate) === 'absent_full';
+                    const isAbsentAM = isStudentAbsent(student.id, 'AM Session', selectedDate);
+                    const isAbsentPM = isStudentAbsent(student.id, 'PM Session', selectedDate);
+                    let needsLunch1130 = false;
+                    let needsLunch1200 = false;
+                    if (!isAbsentFull) {
+                      if (student.lunchSchedule === 'First') {
+                        // First lunch: needs 11:30 if present for AM or PM
+                        needsLunch1130 = (!isAbsentAM) || (!isAbsentPM);
+                        // Needs 12:00 if present for PM and PM starts at 12:30
+                        needsLunch1200 = (!isAbsentPM && (student.lunchSchedule === 'First' ? false : true));
+                        // Actually, for First lunch, only if PM session is 12:30-15:00
+                        if (student.lunchSchedule === 'First') {
+                          // Find if this student has PM session at 12:30
+                          needsLunch1200 = false;
+                        }
+                      } else {
+                        // Second lunch: needs 11:30 if AM ends at 11:30
+                        needsLunch1130 = (!isAbsentAM && student.lunchSchedule === 'Second' && false); // Most Second lunch don't need 11:30
+                        // Needs 12:00 if present for PM
+                        needsLunch1200 = !isAbsentPM;
+                      }
+                    }
+
+                    const lunch1Value = lunchDropdowns[student.id]?.[selectedDate]?.lunch1 || '';
+                    const lunch2Value = lunchDropdowns[student.id]?.[selectedDate]?.lunch2 || '';
+
+                    // Color logic: green if selected, red if needed and not selected, gray if not needed
+                    const lunch1Color = needsLunch1130 ? (lunch1Value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') : 'bg-gray-100 text-gray-400';
+                    const lunch2Color = needsLunch1200 ? (lunch2Value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') : 'bg-gray-100 text-gray-400';
+
+                    if (editMode) {
+                      // Manual edit mode: all session cells become dropdowns
+                      const allStaff = getAllAvailableStaffWithTeam(student);
+                      // Get current assignments (from pendingChanges or schedule)
+                      const todaySessions = getSessionsForDate();
+                      const getCurrent = (sessionType) =>
+                        pendingChanges[student.id]?.[sessionType] ||
+                        todaySessions.find(s => s.studentId === student.id && s.sessionType === sessionType)?.staffId || '';
+                      const sessionTypesList = [
+                        student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)',
+                        'Lunch 1 (11:30-12:00)',
+                        'Lunch 2 (12:00-12:30)',
+                        student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)'
+                      ];
+                      return (
+                        <tr key={student.id} className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{student.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {student.ratio} • {student.lunchSchedule} Lunch
+                            </div>
+                          </td>
+                          {sessionTypesList.map(sessionType => (
+                            <td key={sessionType} className="px-4 py-3 text-center text-sm font-medium rounded-md mx-1">
+                              <select
+                                value={getCurrent(sessionType)}
+                                onChange={e => handleManualEditChange(student.id, sessionType, e.target.value)}
+                              >
+                                <option value="">--</option>
+                                {allStaff.map(member => (
+                                  <option key={member.id} value={member.id}>
+                                    {member.isTeam ? '★ ' : ''}{member.name} ({member.role})
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          ))}
+                          <td className="px-4 py-3">{renderTeamStaff(student)}</td>
+                          <td className="px-4 py-3" colSpan={2}></td>
+                        </tr>
+                      );
+                    } else {
+                      // ...existing code for normal (non-edit) mode...
+                      return (
+                        <tr key={student.id} className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{student.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {student.ratio} • {student.lunchSchedule} Lunch
+                            </div>
+                          </td>
+                          <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.amClass}`}>
+                            {rowData.amDisplay}
+                          </td>
+                          <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${lunch1Color}`}
+                          >
+                            {needsLunch1130 ? (
+                              lunch1Value ? (
+                                staff.find(s => String(s.id) === String(lunch1Value))?.name || ''
+                              ) : (
+                                <select
+                                  value={lunch1Value}
+                                  onChange={e => handleLunchDropdownChange(student.id, 'lunch1', e.target.value)}
+                                >
+                                  <option value="">--</option>
+                                  {lunchDropdownOptions.map(member => (
+                                    <option key={member.id} value={member.id}>
+                                      {member.isTeam ? '★ ' : ''}{member.name} ({member.role})
+                                    </option>
+                                  ))}
+                                </select>
+                              )
+                            ) : (
+                              <span className="text-lg font-bold">✗</span>
+                            )}
+                          </td>
+                          <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${lunch2Color}`}
+                          >
+                            {needsLunch1200 ? (
+                              lunch2Value ? (
+                                staff.find(s => String(s.id) === String(lunch2Value))?.name || ''
+                              ) : (
+                                <select
+                                  value={lunch2Value}
+                                  onChange={e => handleLunchDropdownChange(student.id, 'lunch2', e.target.value)}
+                                >
+                                  <option value="">--</option>
+                                  {lunchDropdownOptions.map(member => (
+                                    <option key={member.id} value={member.id}>
+                                      {member.isTeam ? '★ ' : ''}{member.name} ({member.role})
+                                    </option>
+                                  ))}
+                                </select>
+                              )
+                            ) : (
+                              <span className="text-lg font-bold">✗</span>
+                            )}
+                          </td>
+                          <td className={`px-4 py-3 text-center text-sm font-medium rounded-md mx-1 ${rowData.pmClass}`}>
+                            {rowData.pmDisplay}
+                          </td>
+                          <td className="px-4 py-3">
+                            {renderTeamStaff(student)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={lockedAssignments[student.id]?.AM || ''}
+                              onChange={e => handleLockAssignment(student.id, 'AM', e.target.value)}
+                            >
+                              <option value="">--</option>
+                              {teamStaffMembers.map(member => (
+                                <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={lockedAssignments[student.id]?.PM || ''}
+                              onChange={e => handleLockAssignment(student.id, 'PM', e.target.value)}
+                            >
+                              <option value="">--</option>
+                              {teamStaffMembers.map(member => (
+                                <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    }
                   })}
+        {/* Save/Cancel now handled above table with Manual Edit button */}
                 </tbody>
               </table>
             </div>
@@ -2405,6 +2085,5 @@ const ABAScheduler = () => {
       </div>
     </div>
   );
-};
-
+}
 export default ABAScheduler;
