@@ -334,8 +334,15 @@ const AddClientModal = ({ show, onClose, onAddClient, availableStaff }) => {
 // EXISTING MODALS (Staff, Teams, Attendance, Variety Tracker)
 // =============================================================================
 
-const StaffModal = ({ show, onClose, staff, onToggleAvailability }) => {
+const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, getStaffAttendance, updateStaffAttendance }) => {
   if (!show) return null;
+
+  const attendanceOptions = [
+    { value: 'present', label: 'Present', color: 'text-green-700' },
+    { value: 'absent_am', label: 'Absent AM', color: 'text-orange-700' },
+    { value: 'absent_pm', label: 'Absent PM', color: 'text-orange-700' },
+    { value: 'absent_full', label: 'Absent Full Day', color: 'text-red-700' }
+  ];
 
   return (
     <div 
@@ -343,12 +350,12 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability }) => {
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-lg shadow-xl border w-full max-w-4xl"
-        style={{ height: '80vh', maxHeight: '600px' }}
+        className="bg-white rounded-lg shadow-xl border w-full max-w-6xl"
+        style={{ height: '85vh', maxHeight: '700px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
-          <h3 className="text-xl font-semibold">Manage Staff Availability</h3>
+          <h3 className="text-xl font-semibold">Manage Staff - {selectedDate}</h3>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center"
@@ -360,15 +367,15 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability }) => {
         <div 
           className="px-6 py-4 overflow-y-scroll"
           style={{ 
-            height: 'calc(80vh - 140px)', 
-            maxHeight: 'calc(600px - 140px)'
+            height: 'calc(85vh - 140px)', 
+            maxHeight: 'calc(700px - 140px)'
           }}
         >
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h4 className="font-semibold text-blue-800 mb-2">Staff Summary</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
               <div className="bg-white p-2 rounded border">
-                <span className="font-medium">Total Staff:</span> {staff.length}
+                <span className="font-medium">Total:</span> {staff.length}
               </div>
               <div className="bg-white p-2 rounded border">
                 <span className="font-medium text-green-700">Available:</span> {staff.filter(s => s.available).length}
@@ -377,36 +384,71 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability }) => {
                 <span className="font-medium text-red-700">Unavailable:</span> {staff.filter(s => !s.available).length}
               </div>
               <div className="bg-white p-2 rounded border">
-                <span className="font-medium text-purple-700">RBT:</span> {staff.filter(s => s.role === 'RBT').length}
+                <span className="font-medium text-purple-700">BCBA:</span> {staff.filter(s => s.role === 'BCBA').length}
+              </div>
+              <div className="bg-white p-2 rounded border">
+                <span className="font-medium text-blue-700">BS:</span> {staff.filter(s => s.role === 'BS').length}
+              </div>
+              <div className="bg-white p-2 rounded border">
+                <span className="font-medium text-green-700">RBT:</span> {staff.filter(s => s.role === 'RBT').length}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-            {staff.map(staffMember => (
-              <button
-                key={staffMember.id}
-                onClick={() => onToggleAvailability(staffMember.id)}
-                className={`p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${
-                  staffMember.available 
-                    ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100' 
-                    : 'bg-red-50 border-red-300 text-red-800 hover:bg-red-100'
-                }`}
-              >
-                <div className="font-medium">{staffMember.name}</div>
-                <div className="text-sm opacity-75">{staffMember.role}</div>
-                <div className={`text-xs font-semibold mt-1 ${
-                  staffMember.available ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {staffMember.available ? 'AVAILABLE' : 'UNAVAILABLE'}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {staff.map(staffMember => {
+              const attendance = getStaffAttendance(staffMember.id, selectedDate);
+              const currentOption = attendanceOptions.find(opt => opt.value === attendance);
+
+              return (
+                <div key={staffMember.id} className="bg-white border-2 rounded-lg p-4 hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 className="font-medium text-gray-900">{staffMember.name}</h4>
+                      <p className="text-sm text-gray-600">{staffMember.role}</p>
+                    </div>
+                    <button
+                      onClick={() => onToggleAvailability(staffMember.id)}
+                      className={`px-3 py-1 rounded text-xs font-medium ${
+                        staffMember.available 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}
+                    >
+                      {staffMember.available ? 'AVAILABLE' : 'UNAVAILABLE'}
+                    </button>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Attendance for {selectedDate}:
+                    </label>
+                    <div className="space-y-1">
+                      {attendanceOptions.map(option => (
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`attendance-${staffMember.id}`}
+                            value={option.value}
+                            checked={attendance === option.value}
+                            onChange={() => updateStaffAttendance(staffMember.id, selectedDate, option.value)}
+                            className="mr-2"
+                          />
+                          <span className={`text-xs ${option.color}`}>
+                            {option.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
         
         <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-          <p className="text-sm text-gray-600">Click staff to toggle availability (saves to SharePoint)</p>
+          <p className="text-sm text-gray-600">Manage staff availability and daily attendance</p>
           <button 
             onClick={onClose}
             className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
@@ -853,6 +895,7 @@ const ABAScheduler = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [lockedAssignments, setLockedAssignments] = useState({});
   const [studentAttendance, setStudentAttendance] = useState({});
+  const [staffAttendance, setStaffAttendance] = useState({});
   const [scheduleAnalysis, setScheduleAnalysis] = useState(null);
   const [assignmentHistory, setAssignmentHistory] = useState({});
 
@@ -1015,6 +1058,26 @@ const ABAScheduler = () => {
     setStudentAttendance(prev => ({
       ...prev,
       [`${studentId}-${date}`]: status
+    }));
+  };
+
+  // Staff attendance functions
+  const getStaffAttendance = (staffId, date) => {
+    return staffAttendance[`${staffId}-${date}`] || 'present';
+  };
+
+  const isStaffAbsent = (staffMember, session) => {
+    const attendance = getStaffAttendance(staffMember.id, selectedDate);
+    if (attendance === 'absent_full') return true;
+    if (session === 'AM' && attendance === 'absent_am') return true;
+    if (session === 'PM' && attendance === 'absent_pm') return true;
+    return false;
+  };
+
+  const updateStaffAttendance = (staffId, date, status) => {
+    setStaffAttendance(prev => ({
+      ...prev,
+      [`${staffId}-${date}`]: status
     }));
   };
 
@@ -1531,14 +1594,41 @@ const ABAScheduler = () => {
       
       // Calculate truly unassigned staff
       const availableStaff = staff.filter(s => s.available);
+      const unavailableStaff = staff.filter(s => !s.available);
       const unassignedStaff = availableStaff.filter(s => !assignedStaffIds.has(s.id));
       
-      // Separate AM/PM unassigned staff
+      // Separate AM/PM unassigned and unavailable staff (considering attendance)
       const amAssignedStaffIds = new Set(amSessions.map(s => s.staffId));
       const pmAssignedStaffIds = new Set(pmSessions.map(s => s.staffId));
       
-      const unassignedAMStaff = availableStaff.filter(s => !amAssignedStaffIds.has(s.id));
-      const unassignedPMStaff = availableStaff.filter(s => !pmAssignedStaffIds.has(s.id));
+      const unassignedAMStaff = availableStaff.filter(s => {
+        if (amAssignedStaffIds.has(s.id)) return false;
+        const attendance = getStaffAttendance(s.id, selectedDate);
+        return attendance !== 'absent_full' && attendance !== 'absent_am';
+      });
+      
+      const unassignedPMStaff = availableStaff.filter(s => {
+        if (pmAssignedStaffIds.has(s.id)) return false;
+        const attendance = getStaffAttendance(s.id, selectedDate);
+        return attendance !== 'absent_full' && attendance !== 'absent_pm';
+      });
+      
+      // Get unavailable staff (combining unavailable + absent)
+      const unavailableAMStaff = [
+        ...unavailableStaff,
+        ...availableStaff.filter(s => {
+          const attendance = getStaffAttendance(s.id, selectedDate);
+          return attendance === 'absent_full' || attendance === 'absent_am';
+        })
+      ];
+      
+      const unavailablePMStaff = [
+        ...unavailableStaff,
+        ...availableStaff.filter(s => {
+          const attendance = getStaffAttendance(s.id, selectedDate);
+          return attendance === 'absent_full' || attendance === 'absent_pm';
+        })
+      ];
 
       return {
         amUtilization,
@@ -1548,6 +1638,8 @@ const ABAScheduler = () => {
         unassignedStaff,
         unassignedAMStaff,
         unassignedPMStaff,
+        unavailableAMStaff,
+        unavailablePMStaff,
         totalAvailableStaff: availableStaff.length,
         totalAssignedStaff: assignedStaffIds.size,
         issues: []
@@ -1825,17 +1917,29 @@ const ABAScheduler = () => {
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-semibold text-blue-800 mb-4">Schedule Analysis - {selectedDate}</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white rounded p-3 border">
                   <h4 className="font-medium text-gray-700 mb-2">AM Sessions ({scheduleAnalysis.amUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
                     <div>RBT: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BCBA) || 0}</div>
                     {scheduleAnalysis.unassignedAMStaff && scheduleAnalysis.unassignedAMStaff.length > 0 && (
                       <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-orange-600 mb-1">Unassigned for AM ({scheduleAnalysis.unassignedAMStaff.length}):</div>
+                        <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedAMStaff.length}):</div>
                         <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                           {scheduleAnalysis.unassignedAMStaff.map(staff => (
-                            <div key={staff.id} className="text-orange-600">
+                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-600' : staff.role === 'BS' ? 'text-blue-600' : 'text-green-600'}`}>
+                              {staff.role} {staff.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {scheduleAnalysis.unavailableAMStaff && scheduleAnalysis.unavailableAMStaff.length > 0 && (
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableAMStaff.length}):</div>
+                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                          {scheduleAnalysis.unavailableAMStaff.map(staff => (
+                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-400' : staff.role === 'BS' ? 'text-blue-400' : 'text-green-400'}`}>
                               {staff.role} {staff.name}
                             </div>
                           ))}
@@ -1851,31 +1955,22 @@ const ABAScheduler = () => {
                     <div>RBT: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BCBA) || 0}</div>
                     {scheduleAnalysis.unassignedPMStaff && scheduleAnalysis.unassignedPMStaff.length > 0 && (
                       <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-orange-600 mb-1">Unassigned for PM ({scheduleAnalysis.unassignedPMStaff.length}):</div>
+                        <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedPMStaff.length}):</div>
                         <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                           {scheduleAnalysis.unassignedPMStaff.map(staff => (
-                            <div key={staff.id} className="text-orange-600">
+                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-600' : staff.role === 'BS' ? 'text-blue-600' : 'text-green-600'}`}>
                               {staff.role} {staff.name}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Staff Utilization */}
-                <div className="bg-white rounded p-3 border">
-                  <h4 className="font-medium text-gray-700 mb-2">Overall Staff Utilization</h4>
-                  <div className="text-sm space-y-1">
-                    <div className="text-green-600">Assigned: {scheduleAnalysis.totalAssignedStaff || 0}</div>
-                    <div className="text-orange-600">Completely Unassigned: {scheduleAnalysis.unassignedStaff ? scheduleAnalysis.unassignedStaff.length : 0}</div>
-                    <div className="text-gray-600">Available: {scheduleAnalysis.totalAvailableStaff || 0}</div>
-                    {scheduleAnalysis.unassignedStaff && scheduleAnalysis.unassignedStaff.length > 0 && (
+                    {scheduleAnalysis.unavailablePMStaff && scheduleAnalysis.unavailablePMStaff.length > 0 && (
                       <div className="mt-2 pt-2 border-t">
-                        <div className="text-xs space-y-1 max-h-16 overflow-y-auto">
-                          {scheduleAnalysis.unassignedStaff.map(staff => (
-                            <div key={staff.id} className="text-orange-600">
+                        <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailablePMStaff.length}):</div>
+                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                          {scheduleAnalysis.unavailablePMStaff.map(staff => (
+                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-400' : staff.role === 'BS' ? 'text-blue-400' : 'text-green-400'}`}>
                               {staff.role} {staff.name}
                             </div>
                           ))}
@@ -2174,6 +2269,9 @@ const ABAScheduler = () => {
             onClose={() => setShowStaffManager(false)}
             staff={staff}
             onToggleAvailability={toggleStaffAvailability}
+            selectedDate={selectedDate}
+            getStaffAttendance={getStaffAttendance}
+            updateStaffAttendance={updateStaffAttendance}
           />
 
           <TeamModal
