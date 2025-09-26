@@ -1435,12 +1435,14 @@ const ABAScheduler = () => {
       const pmSessionType = student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)';
 
       if (!lock.AM && !isStudentAbsent(student, 'AM')) {
+        const amRatio = student.amRatio || student.ratio;
         assignmentQueue.push({
           studentId: student.id,
           sessionType: amSessionType,
           assigned: false,
-          requires2to1: student.ratio === '2:1' || student.amRatio === '2:1',
-          isPaired: !!student.pairedWith
+          requires2to1: amRatio === '2:1',
+          isPaired: !!student.pairedWith,
+          staffNeeded: amRatio === '2:1' ? 2 : 1
         });
       }
 
@@ -2651,9 +2653,13 @@ const ABAScheduler = () => {
                                     value=""
                                   >
                                     <option value="">Select Staff 1</option>
-                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                      <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                                    ))}
+                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).length > 0 ? (
+                                      staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                        <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                      ))
+                                    ) : (
+                                      <option disabled value="">No team staff available</option>
+                                    )}
                                   </select>
                                 </div>
                                 <div className="flex flex-col">
