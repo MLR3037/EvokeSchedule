@@ -1913,7 +1913,6 @@ const ABAScheduler = () => {
               Add Client
             </button>
           </div>
-          </div>
 
           {/* Schedule Table */}
           <div className="bg-white border rounded-lg overflow-hidden shadow">
