@@ -1412,20 +1412,37 @@ const ABAScheduler = () => {
       const student = students.find(s => s.id === lunchAssignment.studentId);
       if (!student) return;
 
-      // Find available staff for lunch (prefer those not assigned to this student already)
+      // Find available staff for lunch 
       let lunchCandidates = staff.filter(member => {
         if (!member.available) return false;
         
-        // Check if staff is free during lunch time
-        const hasLunchConflict = newSchedule.some(session => 
+        // Check if staff is free during the specific lunch time slot
+        const lunchTimeSlot = lunchAssignment.sessionType; // e.g., "Lunch 1 (11:30-12:00)" or "Lunch 2 (12:00-12:30)"
+        
+        const hasDirectLunchConflict = newSchedule.some(session => 
           session.staffId === member.id && 
           session.date === selectedDate &&
-          (session.sessionType.includes('Lunch') || 
-           (session.sessionType.includes('AM') && session.sessionType.includes('12:00')) ||
-           (session.sessionType.includes('PM') && session.sessionType.includes('11:30')))
+          session.sessionType === lunchTimeSlot
         );
         
-        return !hasLunchConflict;
+        // For Lunch 1 (11:30-12:00), check if staff has AM session that goes until 12:00
+        // For Lunch 2 (12:00-12:30), check if staff has PM session that starts at 12:00
+        let hasTimeConflict = false;
+        if (lunchTimeSlot === 'Lunch 1 (11:30-12:00)') {
+          hasTimeConflict = newSchedule.some(session =>
+            session.staffId === member.id && 
+            session.date === selectedDate &&
+            session.sessionType === 'AM Session (8:45-12:00)' // Only conflicts with extended AM
+          );
+        } else if (lunchTimeSlot === 'Lunch 2 (12:00-12:30)') {
+          hasTimeConflict = newSchedule.some(session =>
+            session.staffId === member.id && 
+            session.date === selectedDate &&
+            session.sessionType === 'PM (12:00-15:00)' // Only conflicts with early PM start
+          );
+        }
+        
+        return !hasDirectLunchConflict && !hasTimeConflict;
       });
 
       // Prefer staff who aren't already assigned to this student (to maximize variety)
@@ -1437,8 +1454,17 @@ const ABAScheduler = () => {
       const finalCandidates = staffNotWorkingWithStudent.length > 0 ? staffNotWorkingWithStudent : lunchCandidates;
 
       if (finalCandidates.length > 0) {
-        // Sort by sessions count (prefer less busy staff)
-        finalCandidates.sort((a, b) => staffUsage[a.id].sessions - staffUsage[b.id].sessions);
+        // Sort by sessions count (prefer less busy staff), then by role priority
+        finalCandidates.sort((a, b) => {
+          const aSessions = staffUsage[a.id].sessions;
+          const bSessions = staffUsage[b.id].sessions;
+          if (aSessions !== bSessions) return aSessions - bSessions;
+          
+          // If same session count, prefer non-BCBA staff for lunch coverage
+          const aRolePriority = a.role === 'BCBA' ? 3 : (a.role === 'BS' ? 2 : 1);
+          const bRolePriority = b.role === 'BCBA' ? 3 : (b.role === 'BS' ? 2 : 1);
+          return aRolePriority - bRolePriority;
+        });
         
         const selectedStaff = finalCandidates[0];
         
@@ -1456,7 +1482,9 @@ const ABAScheduler = () => {
         
         console.log(`Lunch coverage: ${selectedStaff.role} ${selectedStaff.name} for ${student.name} - ${lunchAssignment.sessionType}`);
       } else {
-        console.log(`WARNING: No available staff for lunch coverage for ${student.name}`);
+        console.log(`WARNING: No available staff for lunch coverage for ${student.name} - ${lunchAssignment.sessionType}`);
+        console.log('Available staff:', staff.filter(s => s.available).map(s => `${s.role} ${s.name}`));
+        console.log('Lunch candidates after filtering:', lunchCandidates.map(s => `${s.role} ${s.name}`));
       }
     });
 
@@ -1797,11 +1825,23 @@ const ABAScheduler = () => {
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-semibold text-blue-800 mb-4">Schedule Analysis - {selectedDate}</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white rounded p-3 border">
                   <h4 className="font-medium text-gray-700 mb-2">AM Sessions ({scheduleAnalysis.amUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
                     <div>RBT: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BCBA) || 0}</div>
+                    {scheduleAnalysis.unassignedAMStaff && scheduleAnalysis.unassignedAMStaff.length > 0 && (
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="font-medium text-orange-600 mb-1">Unassigned for AM ({scheduleAnalysis.unassignedAMStaff.length}):</div>
+                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                          {scheduleAnalysis.unassignedAMStaff.map(staff => (
+                            <div key={staff.id} className="text-orange-600">
+                              {staff.role} {staff.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1809,31 +1849,38 @@ const ABAScheduler = () => {
                   <h4 className="font-medium text-gray-700 mb-2">PM Sessions ({scheduleAnalysis.pmUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
                     <div>RBT: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BCBA) || 0}</div>
+                    {scheduleAnalysis.unassignedPMStaff && scheduleAnalysis.unassignedPMStaff.length > 0 && (
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="font-medium text-orange-600 mb-1">Unassigned for PM ({scheduleAnalysis.unassignedPMStaff.length}):</div>
+                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                          {scheduleAnalysis.unassignedPMStaff.map(staff => (
+                            <div key={staff.id} className="text-orange-600">
+                              {staff.role} {staff.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Staff Utilization */}
                 <div className="bg-white rounded p-3 border">
-                  <h4 className="font-medium text-gray-700 mb-2">Staff Utilization</h4>
+                  <h4 className="font-medium text-gray-700 mb-2">Overall Staff Utilization</h4>
                   <div className="text-sm space-y-1">
                     <div className="text-green-600">Assigned: {scheduleAnalysis.totalAssignedStaff || 0}</div>
-                    <div className="text-orange-600">Unassigned: {scheduleAnalysis.unassignedStaff ? scheduleAnalysis.unassignedStaff.length : 0}</div>
+                    <div className="text-orange-600">Completely Unassigned: {scheduleAnalysis.unassignedStaff ? scheduleAnalysis.unassignedStaff.length : 0}</div>
                     <div className="text-gray-600">Available: {scheduleAnalysis.totalAvailableStaff || 0}</div>
-                  </div>
-                </div>
-
-                {/* Unassigned Staff Names */}
-                <div className="bg-white rounded p-3 border">
-                  <h4 className="font-medium text-gray-700 mb-2">Unassigned Staff Details</h4>
-                  <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                    {scheduleAnalysis.unassignedStaff && scheduleAnalysis.unassignedStaff.length > 0 ? (
-                      scheduleAnalysis.unassignedStaff.map(staff => (
-                        <div key={staff.id} className="text-orange-600">
-                          {staff.role} {staff.name}
+                    {scheduleAnalysis.unassignedStaff && scheduleAnalysis.unassignedStaff.length > 0 && (
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="text-xs space-y-1 max-h-16 overflow-y-auto">
+                          {scheduleAnalysis.unassignedStaff.map(staff => (
+                            <div key={staff.id} className="text-orange-600">
+                              {staff.role} {staff.name}
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-green-600">All available staff assigned!</div>
+                      </div>
                     )}
                   </div>
                 </div>
