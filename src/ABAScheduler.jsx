@@ -1562,7 +1562,24 @@ const ABAScheduler = () => {
           const student = students.find(s => s.id === assignment.studentId);
           if (!student) return;
 
-          let availableStaff = staff.filter(member => member.available);
+          // For AM/PM sessions, ONLY use team staff - never system-wide
+          const isAMPM = assignment.sessionType.includes('AM') || assignment.sessionType.includes('PM');
+          let availableStaff;
+          
+          if (isAMPM) {
+            // Restrict to team staff only for AM/PM sessions
+            availableStaff = (student.teamStaff || [])
+              .map(name => getStaffByName(name))
+              .filter(member => member && member.available);
+              
+            if (availableStaff.length === 0) {
+              console.log(`⚠️ No team staff available for ${student.name} - ${assignment.sessionType}. Skipping system-wide assignment.`);
+              return; // Skip this assignment - don't assign non-team staff
+            }
+          } else {
+            // For lunch/other sessions, allow system-wide assignment
+            availableStaff = staff.filter(member => member.available);
+          }
           
           // Filter by session time availability and prevent all-day assignments
           availableStaff = availableStaff.filter(member => {
@@ -1618,7 +1635,8 @@ const ABAScheduler = () => {
             if (isPM) staffUsage[selectedStaff.id].pm = true;
             staffUsage[selectedStaff.id].sessions += 1;
             
-            console.log(`System ${selectedStaff.role} - ${selectedStaff.name} to ${student.name} - ${assignment.sessionType} (variety: ${varietyScore})`);
+            const assignmentType = isAMPM ? 'TEAM-ONLY' : 'System-wide';
+            console.log(`${assignmentType} ${selectedStaff.role} - ${selectedStaff.name} to ${student.name} - ${assignment.sessionType} (variety: ${varietyScore})`);
           }
         });
         
