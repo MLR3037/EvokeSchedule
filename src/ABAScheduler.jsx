@@ -335,6 +335,8 @@ const AddClientModal = ({ show, onClose, onAddClient, availableStaff }) => {
 // =============================================================================
 
 const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, getStaffAttendance, updateStaffAttendance }) => {
+  const [searchTerm, setSearchTerm] = React.useState('');
+  
   if (!show) return null;
 
   const attendanceOptions = [
@@ -343,6 +345,14 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
     { value: 'absent_pm', label: 'Absent PM', color: 'text-orange-700' },
     { value: 'absent_full', label: 'Absent Full Day', color: 'text-red-700' }
   ];
+
+  // Filter and sort staff alphabetically
+  const filteredStaff = staff
+    .filter(staffMember => 
+      staffMember.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staffMember.role.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div 
@@ -355,7 +365,7 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
-          <h3 className="text-xl font-semibold">Manage Staff - {selectedDate}</h3>
+          <h3 className="text-xl font-semibold">Staff Attendance - {selectedDate}</h3>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center"
@@ -364,24 +374,28 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
           </button>
         </div>
         
+        <div className="px-6 py-4 border-b">
+          <input
+            type="text"
+            placeholder="Search staff by name or role..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        
         <div 
           className="px-6 py-4 overflow-y-scroll"
           style={{ 
-            height: 'calc(85vh - 140px)', 
-            maxHeight: 'calc(700px - 140px)'
+            height: 'calc(85vh - 180px)', 
+            maxHeight: 'calc(700px - 180px)'
           }}
         >
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-semibold text-blue-800 mb-2">Staff Summary</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-semibold text-blue-800 mb-2">Staff Summary ({filteredStaff.length} of {staff.length})</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="bg-white p-2 rounded border">
                 <span className="font-medium">Total:</span> {staff.length}
-              </div>
-              <div className="bg-white p-2 rounded border">
-                <span className="font-medium text-green-700">Available:</span> {staff.filter(s => s.available).length}
-              </div>
-              <div className="bg-white p-2 rounded border">
-                <span className="font-medium text-red-700">Unavailable:</span> {staff.filter(s => !s.available).length}
               </div>
               <div className="bg-white p-2 rounded border">
                 <span className="font-medium text-purple-700">BCBA:</span> {staff.filter(s => s.role === 'BCBA').length}
@@ -396,27 +410,15 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {staff.map(staffMember => {
+            {filteredStaff.map(staffMember => {
               const attendance = getStaffAttendance(staffMember.id, selectedDate);
               const currentOption = attendanceOptions.find(opt => opt.value === attendance);
 
               return (
                 <div key={staffMember.id} className="bg-white border-2 rounded-lg p-4 hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{staffMember.name}</h4>
-                      <p className="text-sm text-gray-600">{staffMember.role}</p>
-                    </div>
-                    <button
-                      onClick={() => onToggleAvailability(staffMember.id)}
-                      className={`px-3 py-1 rounded text-xs font-medium ${
-                        staffMember.available 
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      }`}
-                    >
-                      {staffMember.available ? 'AVAILABLE' : 'UNAVAILABLE'}
-                    </button>
+                  <div className="mb-3">
+                    <h4 className="font-medium text-gray-900">{staffMember.name}</h4>
+                    <p className="text-sm text-gray-600">{staffMember.role}</p>
                   </div>
                   
                   <div>
@@ -448,7 +450,7 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
         </div>
         
         <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-          <p className="text-sm text-gray-600">Manage staff availability and daily attendance</p>
+          <p className="text-sm text-gray-600">Manage daily staff attendance</p>
           <button 
             onClick={onClose}
             className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
@@ -561,7 +563,16 @@ const TeamModal = ({ show, onClose, students, staff, onUpdateTeamStaff }) => {
 };
 
 const AttendanceModal = ({ show, onClose, students, selectedDate, getStudentAttendance, updateStudentAttendance }) => {
+  const [searchTerm, setSearchTerm] = React.useState('');
+  
   if (!show) return null;
+
+  // Filter and sort students alphabetically
+  const filteredStudents = students
+    .filter(student => 
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div 
@@ -583,9 +594,19 @@ const AttendanceModal = ({ show, onClose, students, selectedDate, getStudentAtte
           </button>
         </div>
         
-        <div className="px-6 py-4 overflow-y-scroll" style={{ height: 'calc(85vh - 140px)', maxHeight: 'calc(700px - 140px)' }}>
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-semibold text-blue-800 mb-2">Attendance Options</h4>
+        <div className="px-6 py-4 border-b">
+          <input
+            type="text"
+            placeholder="Search students by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        
+        <div className="px-6 py-4 overflow-y-scroll" style={{ height: 'calc(85vh - 180px)', maxHeight: 'calc(700px - 180px)' }}>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-semibold text-blue-800 mb-2">Attendance Options ({filteredStudents.length} of {students.length})</h4>
             <div className="text-sm text-blue-700 space-y-1">
               <div><strong>Present:</strong> Student will attend both AM and PM sessions</div>
               <div><strong>AM Out:</strong> Student absent for AM session only</div>
@@ -595,7 +616,7 @@ const AttendanceModal = ({ show, onClose, students, selectedDate, getStudentAtte
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {students.map(student => {
+            {filteredStudents.map(student => {
               const currentAttendance = getStudentAttendance(student.id, selectedDate);
               
               return (
@@ -1949,7 +1970,8 @@ const ABAScheduler = () => {
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
-                                'text-green-600'
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
                               }`}>
                                 {staff.role} {staff.name}
                               </div>
@@ -1963,14 +1985,15 @@ const ABAScheduler = () => {
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                             {scheduleAnalysis.unavailableAMStaff.map(staff => (
                               <div key={staff.id} className={`${
-                                staff.role === 'BCBA' ? 'text-purple-400' : 
-                                staff.role === 'BS' ? 'text-blue-400' : 
-                                staff.role === 'Director' ? 'text-red-400' :
-                                staff.role === 'CC' ? 'text-yellow-400' :
-                                staff.role === 'EA' ? 'text-pink-400' :
-                                staff.role === 'Trainer' ? 'text-orange-400' :
-                                staff.role === 'MHA' ? 'text-indigo-400' :
-                                'text-green-400'
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
                               }`}>
                                 {staff.role} {staff.name}
                               </div>
@@ -2009,7 +2032,8 @@ const ABAScheduler = () => {
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
-                                'text-green-600'
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
                               }`}>
                                 {staff.role} {staff.name}
                               </div>
@@ -2023,14 +2047,15 @@ const ABAScheduler = () => {
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                             {scheduleAnalysis.unavailablePMStaff.map(staff => (
                               <div key={staff.id} className={`${
-                                staff.role === 'BCBA' ? 'text-purple-400' : 
-                                staff.role === 'BS' ? 'text-blue-400' : 
-                                staff.role === 'Director' ? 'text-red-400' :
-                                staff.role === 'CC' ? 'text-yellow-400' :
-                                staff.role === 'EA' ? 'text-pink-400' :
-                                staff.role === 'Trainer' ? 'text-orange-400' :
-                                staff.role === 'MHA' ? 'text-indigo-400' :
-                                'text-green-400'
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
                               }`}>
                                 {staff.role} {staff.name}
                               </div>
