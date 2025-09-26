@@ -1127,8 +1127,13 @@ const ABAScheduler = () => {
       isManual: true
     };
     
-    setSchedule([...filteredSchedule, newSession]);
+    const newSchedule = [...filteredSchedule, newSession];
+    setSchedule(newSchedule);
     addAssignmentToHistory(studentId, staffId, selectedDate);
+    
+    // Immediately update analysis to reflect manual assignment
+    const analysis = generateAnalysis(newSchedule);
+    setScheduleAnalysis(analysis);
     
     console.log(`Manual assignment: ${staffMember.role} ${staffMember.name} to ${student.name} - ${sessionType}`);
   };
@@ -2329,16 +2334,42 @@ const ABAScheduler = () => {
                                 <div>{rowData.amDisplay}</div>
                               )}
                             </div>
-                            <select
-                              onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
-                              className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                              value=""
-                            >
-                              <option value="">Manual Edit</option>
-                              {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                              ))}
-                            </select>
+                            {/* Show appropriate dropdowns based on student ratio */}
+                            {student.ratio === '2:1' ? (
+                              <div className="flex flex-col space-y-1 w-full">
+                                <select
+                                  onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
+                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                  value=""
+                                >
+                                  <option value="">Add Staff 1</option>
+                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
+                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                  value=""
+                                >
+                                  <option value="">Add Staff 2</option>
+                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
+                                className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                value=""
+                              >
+                                <option value="">Manual Edit</option>
+                                {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                  <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                         </td>
                         <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-36 ${rowData.lunch1Class}`}>
@@ -2394,16 +2425,42 @@ const ABAScheduler = () => {
                                 <div>{rowData.pmDisplay}</div>
                               )}
                             </div>
-                            <select
-                              onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
-                              className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                              value=""
-                            >
-                              <option value="">Manual Edit</option>
-                              {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                              ))}
-                            </select>
+                            {/* Show appropriate dropdowns based on student ratio */}
+                            {student.ratio === '2:1' ? (
+                              <div className="flex flex-col space-y-1 w-full">
+                                <select
+                                  onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
+                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                  value=""
+                                >
+                                  <option value="">Add Staff 1</option>
+                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
+                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                  value=""
+                                >
+                                  <option value="">Add Staff 2</option>
+                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <select
+                                onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
+                                className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
+                                value=""
+                              >
+                                <option value="">Manual Edit</option>
+                                {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                  <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-3 w-64">
