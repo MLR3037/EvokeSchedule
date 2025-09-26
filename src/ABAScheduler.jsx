@@ -1115,6 +1115,69 @@ const ABAScheduler = () => {
     }));
   };
 
+  // Manual assignment function for 2:1 ratios
+  const handleManual2to1Assignment = (studentId, sessionType, staffId, position) => {
+    if (!staffId) return;
+    
+    const student = students.find(s => s.id === studentId);
+    const staffMember = staff.find(s => s.id === staffId);
+    
+    if (!student || !staffMember) return;
+    
+    // Check if staff is on student's team for AM/PM sessions
+    if ((sessionType === 'AM' || sessionType === 'PM') && student.teamStaff && !student.teamStaff.includes(staffMember.name)) {
+      alert(`${staffMember.role} ${staffMember.name} is not on ${student.name}'s team and cannot be assigned to AM/PM sessions.`);
+      return;
+    }
+
+    // Get current sessions for this student and session type
+    const currentSessions = schedule.filter(s => 
+      s.studentId === studentId && 
+      s.sessionType.includes(sessionType) && 
+      s.date === selectedDate
+    );
+
+    // Remove existing assignment at this position if it exists
+    let filteredSchedule = schedule.filter(s => 
+      !(s.studentId === studentId && 
+        s.sessionType.includes(sessionType) && 
+        s.date === selectedDate &&
+        s.position === position)
+    );
+
+    // Check if staff is already assigned to this student in the other position
+    const otherPositionSession = currentSessions.find(s => 
+      s.staffId === staffId && s.position !== position
+    );
+    
+    if (otherPositionSession) {
+      alert(`${staffMember.role} ${staffMember.name} is already assigned to ${student.name} as Staff ${otherPositionSession.position === 1 ? '1' : '2'}.`);
+      return;
+    }
+
+    // Create new assignment
+    const newSession = {
+      id: Date.now() + Math.random(),
+      studentId: studentId,
+      staffId: staffId,
+      sessionType: getSessionTypeForStudent(student, sessionType),
+      date: selectedDate,
+      time: SESSION_TYPES[getSessionTypeForStudent(student, sessionType)],
+      isManual: true,
+      position: position // 1 or 2 for 2:1 assignments
+    };
+    
+    const newSchedule = [...filteredSchedule, newSession];
+    setSchedule(newSchedule);
+    addAssignmentToHistory(studentId, staffId, selectedDate);
+    
+    // Immediately update analysis to reflect manual assignment
+    const analysis = generateAnalysis(newSchedule);
+    setScheduleAnalysis(analysis);
+    
+    console.log(`Manual 2:1 assignment: ${staffMember.role} ${staffMember.name} to ${student.name} - ${sessionType} (Position ${position})`);
+  };
+
   // Manual assignment function
   const handleManualAssignment = (studentId, sessionType, staffId) => {
     if (!staffId) return;
@@ -1123,6 +1186,12 @@ const ABAScheduler = () => {
     const staffMember = staff.find(s => s.id === staffId);
     
     if (!student || !staffMember) return;
+    
+    // Check if staff is on student's team for AM/PM sessions
+    if ((sessionType === 'AM' || sessionType === 'PM') && student.teamStaff && !student.teamStaff.includes(staffMember.name)) {
+      alert(`${staffMember.role} ${staffMember.name} is not on ${student.name}'s team and cannot be assigned to AM/PM sessions.`);
+      return;
+    }
     
     // Remove existing assignment for this student and session type
     const filteredSchedule = schedule.filter(s => 
@@ -1413,6 +1482,7 @@ const ABAScheduler = () => {
                   date: selectedDate,
                   time: SESSION_TYPES[assignment.sessionType],
                   is2to1: true,
+                  position: index + 1, // 1 or 2 for staff positions
                   partner: index === 0 ? selectedStaff2.id : selectedStaff1.id
                 };
                 
@@ -1719,22 +1789,16 @@ const ABAScheduler = () => {
         return attendance !== 'absent_full' && attendance !== 'absent_pm';
       });
       
-      // Get unavailable staff (combining unavailable + absent)
-      const unavailableAMStaff = [
-        ...unavailableStaff,
-        ...availableStaff.filter(s => {
-          const attendance = getStaffAttendance(s.id, selectedDate);
-          return attendance === 'absent_full' || attendance === 'absent_am';
-        })
-      ];
+      // Get staff who are absent for the day (daily attendance)
+      const absentAMStaff = availableStaff.filter(s => {
+        const attendance = getStaffAttendance(s.id, selectedDate);
+        return attendance === 'absent_full' || attendance === 'absent_am';
+      });
       
-      const unavailablePMStaff = [
-        ...unavailableStaff,
-        ...availableStaff.filter(s => {
-          const attendance = getStaffAttendance(s.id, selectedDate);
-          return attendance === 'absent_full' || attendance === 'absent_pm';
-        })
-      ];
+      const absentPMStaff = availableStaff.filter(s => {
+        const attendance = getStaffAttendance(s.id, selectedDate);
+        return attendance === 'absent_full' || attendance === 'absent_pm';
+      });
 
       return {
         amUtilization,
@@ -1744,8 +1808,9 @@ const ABAScheduler = () => {
         unassignedStaff,
         unassignedAMStaff,
         unassignedPMStaff,
-        unavailableAMStaff,
-        unavailablePMStaff,
+        unavailableStaff, // SharePoint unavailable (permanent)
+        absentAMStaff,    // Daily attendance absent AM
+        absentPMStaff,    // Daily attendance absent PM
         totalAvailableStaff: availableStaff.length,
         totalAssignedStaff: assignedStaffIds.size,
         issues: []
@@ -1760,6 +1825,9 @@ const ABAScheduler = () => {
         unassignedStaff: [],
         unassignedAMStaff: [],
         unassignedPMStaff: [],
+        unavailableStaff: [],
+        absentAMStaff: [],
+        absentPMStaff: [],
         totalAvailableStaff: 0,
         totalAssignedStaff: 0,
         issues: []
@@ -1943,6 +2011,20 @@ const ABAScheduler = () => {
       
       const currentStudent = students.find(s => s.id === currentStudentId);
       if (!currentStudent) return false;
+      
+      // Skip conflict checking for lunch sessions - multiple students per staff is expected
+      if (currentSessionType.includes('Lunch')) {
+        return false;
+      }
+      
+      // Check if staff is on the student's team for AM/PM sessions
+      const staffMember = staff.find(s => s.id === staffId);
+      if (staffMember && (currentSessionType.includes('AM') || currentSessionType.includes('PM'))) {
+        const studentTeamStaff = currentStudent.teamStaff || [];
+        if (!studentTeamStaff.includes(staffMember.name)) {
+          return true; // Flag as conflict - staff not on student's team
+        }
+      }
       
       // Check for same-time conflicts (staff assigned to multiple students at same time)
       const conflictingAssignments = todaySessions.filter(session => 
@@ -2133,7 +2215,7 @@ const ABAScheduler = () => {
                       Teacher: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.Teacher) || 0} • 
                       MHA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.MHA) || 0}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="grid grid-cols-3 gap-2 mt-2">
                       {scheduleAnalysis.unassignedAMStaff && scheduleAnalysis.unassignedAMStaff.length > 0 && (
                         <div className="pt-2 border-t">
                           <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedAMStaff.length}):</div>
@@ -2157,11 +2239,34 @@ const ABAScheduler = () => {
                           </div>
                         </div>
                       )}
-                      {scheduleAnalysis.unavailableAMStaff && scheduleAnalysis.unavailableAMStaff.length > 0 && (
+                      {scheduleAnalysis.absentAMStaff && scheduleAnalysis.absentAMStaff.length > 0 && (
                         <div className="pt-2 border-t">
-                          <div className="font-medium text-gray-600 mb-1">Staff Attendance - Absent ({scheduleAnalysis.unavailableAMStaff.length}):</div>
+                          <div className="font-medium text-red-600 mb-1">Daily Absent ({scheduleAnalysis.absentAMStaff.length}):</div>
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                            {scheduleAnalysis.unavailableAMStaff.map(staff => (
+                            {scheduleAnalysis.absentAMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {scheduleAnalysis.unavailableStaff && scheduleAnalysis.unavailableStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unavailableStaff.map(staff => (
                               <div key={staff.id} className={`${
                                 staff.role === 'BCBA' ? 'text-purple-600' : 
                                 staff.role === 'BS' ? 'text-blue-600' : 
@@ -2198,7 +2303,7 @@ const ABAScheduler = () => {
                       Teacher: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.Teacher) || 0} • 
                       MHA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.MHA) || 0}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="grid grid-cols-3 gap-2 mt-2">
                       {scheduleAnalysis.unassignedPMStaff && scheduleAnalysis.unassignedPMStaff.length > 0 && (
                         <div className="pt-2 border-t">
                           <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedPMStaff.length}):</div>
@@ -2222,11 +2327,34 @@ const ABAScheduler = () => {
                           </div>
                         </div>
                       )}
-                      {scheduleAnalysis.unavailablePMStaff && scheduleAnalysis.unavailablePMStaff.length > 0 && (
+                      {scheduleAnalysis.absentPMStaff && scheduleAnalysis.absentPMStaff.length > 0 && (
                         <div className="pt-2 border-t">
-                          <div className="font-medium text-gray-600 mb-1">Staff Attendance - Absent ({scheduleAnalysis.unavailablePMStaff.length}):</div>
+                          <div className="font-medium text-red-600 mb-1">Daily Absent ({scheduleAnalysis.absentPMStaff.length}):</div>
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                            {scheduleAnalysis.unavailablePMStaff.map(staff => (
+                            {scheduleAnalysis.absentPMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                staff.role === 'RBT' ? 'text-green-600' :
+                                'text-gray-600'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {scheduleAnalysis.unavailableStaff && scheduleAnalysis.unavailableStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unavailableStaff.map(staff => (
                               <div key={staff.id} className={`${
                                 staff.role === 'BCBA' ? 'text-purple-600' : 
                                 staff.role === 'BS' ? 'text-blue-600' : 
@@ -2378,12 +2506,15 @@ const ABAScheduler = () => {
                             <div className="w-full text-center">
                               {/* Show all staff for 2:1 assignments */}
                               {amSessions.length > 1 ? (
-                                <div className="space-y-1">
-                                  {amSessions.map((session, index) => {
+                                <div className="grid grid-cols-2 gap-1">
+                                  {amSessions
+                                    .sort((a, b) => (a.position || 1) - (b.position || 1))
+                                    .map((session, index) => {
                                     const staffMember = staff.find(s => s.id === session.staffId);
                                     return (
-                                      <div key={index} className="text-xs">
-                                        {staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}
+                                      <div key={index} className="text-xs border rounded p-1 bg-blue-50">
+                                        <div className="font-semibold">Staff {session.position || index + 1}</div>
+                                        <div>{staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}</div>
                                       </div>
                                     );
                                   })}
@@ -2394,27 +2525,33 @@ const ABAScheduler = () => {
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
                             {student.ratio === '2:1' ? (
-                              <div className="flex flex-col space-y-1 w-full">
-                                <select
-                                  onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
-                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                                  value=""
-                                >
-                                  <option value="">Add Staff 1</option>
-                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                                  ))}
-                                </select>
-                                <select
-                                  onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
-                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                                  value=""
-                                >
-                                  <option value="">Add Staff 2</option>
-                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                                  ))}
-                                </select>
+                              <div className="grid grid-cols-2 gap-1 w-full mt-1">
+                                <div className="flex flex-col">
+                                  <label className="text-xs font-semibold mb-1">Staff 1:</label>
+                                  <select
+                                    onChange={(e) => handleManual2to1Assignment(student.id, 'AM', e.target.value, 1)}
+                                    className="text-xs p-1 rounded border bg-white w-full"
+                                    value=""
+                                  >
+                                    <option value="">Select Staff 1</option>
+                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                      <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="text-xs font-semibold mb-1">Staff 2:</label>
+                                  <select
+                                    onChange={(e) => handleManual2to1Assignment(student.id, 'AM', e.target.value, 2)}
+                                    className="text-xs p-1 rounded border bg-white w-full"
+                                    value=""
+                                  >
+                                    <option value="">Select Staff 2</option>
+                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                      <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                             ) : (
                               <select
@@ -2469,12 +2606,15 @@ const ABAScheduler = () => {
                             <div className="w-full text-center">
                               {/* Show all staff for 2:1 assignments */}
                               {pmSessions.length > 1 ? (
-                                <div className="space-y-1">
-                                  {pmSessions.map((session, index) => {
+                                <div className="grid grid-cols-2 gap-1">
+                                  {pmSessions
+                                    .sort((a, b) => (a.position || 1) - (b.position || 1))
+                                    .map((session, index) => {
                                     const staffMember = staff.find(s => s.id === session.staffId);
                                     return (
-                                      <div key={index} className="text-xs">
-                                        {staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}
+                                      <div key={index} className="text-xs border rounded p-1 bg-blue-50">
+                                        <div className="font-semibold">Staff {session.position || index + 1}</div>
+                                        <div>{staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}</div>
                                       </div>
                                     );
                                   })}
@@ -2485,27 +2625,33 @@ const ABAScheduler = () => {
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
                             {student.ratio === '2:1' ? (
-                              <div className="flex flex-col space-y-1 w-full">
-                                <select
-                                  onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
-                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                                  value=""
-                                >
-                                  <option value="">Add Staff 1</option>
-                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                                  ))}
-                                </select>
-                                <select
-                                  onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
-                                  className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
-                                  value=""
-                                >
-                                  <option value="">Add Staff 2</option>
-                                  {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
-                                    <option key={member.id} value={member.id}>{member.role} {member.name}</option>
-                                  ))}
-                                </select>
+                              <div className="grid grid-cols-2 gap-1 w-full mt-1">
+                                <div className="flex flex-col">
+                                  <label className="text-xs font-semibold mb-1">Staff 1:</label>
+                                  <select
+                                    onChange={(e) => handleManual2to1Assignment(student.id, 'PM', e.target.value, 1)}
+                                    className="text-xs p-1 rounded border bg-white w-full"
+                                    value=""
+                                  >
+                                    <option value="">Select Staff 1</option>
+                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                      <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="text-xs font-semibold mb-1">Staff 2:</label>
+                                  <select
+                                    onChange={(e) => handleManual2to1Assignment(student.id, 'PM', e.target.value, 2)}
+                                    className="text-xs p-1 rounded border bg-white w-full"
+                                    value=""
+                                  >
+                                    <option value="">Select Staff 2</option>
+                                    {staff.filter(s => s.available && (student.teamStaff || []).includes(s.name)).map(member => (
+                                      <option key={member.id} value={member.id}>{member.role} {member.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                             ) : (
                               <select
@@ -2586,7 +2732,7 @@ const ABAScheduler = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">⚠️</span>
-              <span className="text-gray-600">Scheduling Conflict</span>
+              <span className="text-gray-600">AM/PM Scheduling Conflict or Non-Team Staff</span>
             </div>
           </div>
 
