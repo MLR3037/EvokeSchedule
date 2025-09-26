@@ -1569,8 +1569,12 @@ const ABAScheduler = () => {
       const amPresentStudents = presentStudents.filter(s => !isStudentAbsent(s, 'AM'));
       const pmPresentStudents = presentStudents.filter(s => !isStudentAbsent(s, 'PM'));
       
-      const amUtilization = amPresentStudents.length > 0 ? Math.round((amSessions.length / amPresentStudents.length) * 100) : 100;
-      const pmUtilization = pmPresentStudents.length > 0 ? Math.round((pmSessions.length / pmPresentStudents.length) * 100) : 100;
+      // Count unique students with assignments, not total sessions (fixes >100% issue)
+      const amAssignedStudents = new Set(amSessions.map(s => s.studentId)).size;
+      const pmAssignedStudents = new Set(pmSessions.map(s => s.studentId)).size;
+      
+      const amUtilization = amPresentStudents.length > 0 ? Math.round((amAssignedStudents / amPresentStudents.length) * 100) : 100;
+      const pmUtilization = pmPresentStudents.length > 0 ? Math.round((pmAssignedStudents / pmPresentStudents.length) * 100) : 100;
 
       const amRoleDistribution = {};
       const pmRoleDistribution = {};
@@ -1921,62 +1925,120 @@ const ABAScheduler = () => {
                 <div className="bg-white rounded p-3 border">
                   <h4 className="font-medium text-gray-700 mb-2">AM Sessions ({scheduleAnalysis.amUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
-                    <div>RBT: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BCBA) || 0}</div>
-                    {scheduleAnalysis.unassignedAMStaff && scheduleAnalysis.unassignedAMStaff.length > 0 && (
-                      <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedAMStaff.length}):</div>
-                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                          {scheduleAnalysis.unassignedAMStaff.map(staff => (
-                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-600' : staff.role === 'BS' ? 'text-blue-600' : 'text-green-600'}`}>
-                              {staff.role} {staff.name}
-                            </div>
-                          ))}
+                    <div>
+                      RBT: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.RBT) || 0} • 
+                      BS: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BS) || 0} • 
+                      BCBA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.BCBA) || 0} • 
+                      Director: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.Director) || 0} • 
+                      CC: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.CC) || 0} • 
+                      EA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.EA) || 0} • 
+                      Trainer: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.Trainer) || 0} • 
+                      MHA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.MHA) || 0}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {scheduleAnalysis.unassignedAMStaff && scheduleAnalysis.unassignedAMStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedAMStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unassignedAMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                'text-green-600'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {scheduleAnalysis.unavailableAMStaff && scheduleAnalysis.unavailableAMStaff.length > 0 && (
-                      <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableAMStaff.length}):</div>
-                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                          {scheduleAnalysis.unavailableAMStaff.map(staff => (
-                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-400' : staff.role === 'BS' ? 'text-blue-400' : 'text-green-400'}`}>
-                              {staff.role} {staff.name}
-                            </div>
-                          ))}
+                      )}
+                      {scheduleAnalysis.unavailableAMStaff && scheduleAnalysis.unavailableAMStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableAMStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unavailableAMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-400' : 
+                                staff.role === 'BS' ? 'text-blue-400' : 
+                                staff.role === 'Director' ? 'text-red-400' :
+                                staff.role === 'CC' ? 'text-yellow-400' :
+                                staff.role === 'EA' ? 'text-pink-400' :
+                                staff.role === 'Trainer' ? 'text-orange-400' :
+                                staff.role === 'MHA' ? 'text-indigo-400' :
+                                'text-green-400'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded p-3 border">
                   <h4 className="font-medium text-gray-700 mb-2">PM Sessions ({scheduleAnalysis.pmUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
-                    <div>RBT: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.RBT) || 0} • BS: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BS) || 0} • BCBA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BCBA) || 0}</div>
-                    {scheduleAnalysis.unassignedPMStaff && scheduleAnalysis.unassignedPMStaff.length > 0 && (
-                      <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedPMStaff.length}):</div>
-                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                          {scheduleAnalysis.unassignedPMStaff.map(staff => (
-                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-600' : staff.role === 'BS' ? 'text-blue-600' : 'text-green-600'}`}>
-                              {staff.role} {staff.name}
-                            </div>
-                          ))}
+                    <div>
+                      RBT: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.RBT) || 0} • 
+                      BS: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BS) || 0} • 
+                      BCBA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.BCBA) || 0} • 
+                      Director: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.Director) || 0} • 
+                      CC: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.CC) || 0} • 
+                      EA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.EA) || 0} • 
+                      Trainer: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.Trainer) || 0} • 
+                      MHA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.MHA) || 0}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {scheduleAnalysis.unassignedPMStaff && scheduleAnalysis.unassignedPMStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-orange-600 mb-1">Unassigned ({scheduleAnalysis.unassignedPMStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unassignedPMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-600' : 
+                                staff.role === 'BS' ? 'text-blue-600' : 
+                                staff.role === 'Director' ? 'text-red-600' :
+                                staff.role === 'CC' ? 'text-yellow-600' :
+                                staff.role === 'EA' ? 'text-pink-600' :
+                                staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'MHA' ? 'text-indigo-600' :
+                                'text-green-600'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {scheduleAnalysis.unavailablePMStaff && scheduleAnalysis.unavailablePMStaff.length > 0 && (
-                      <div className="mt-2 pt-2 border-t">
-                        <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailablePMStaff.length}):</div>
-                        <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
-                          {scheduleAnalysis.unavailablePMStaff.map(staff => (
-                            <div key={staff.id} className={`${staff.role === 'BCBA' ? 'text-purple-400' : staff.role === 'BS' ? 'text-blue-400' : 'text-green-400'}`}>
-                              {staff.role} {staff.name}
-                            </div>
-                          ))}
+                      )}
+                      {scheduleAnalysis.unavailablePMStaff && scheduleAnalysis.unavailablePMStaff.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailablePMStaff.length}):</div>
+                          <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
+                            {scheduleAnalysis.unavailablePMStaff.map(staff => (
+                              <div key={staff.id} className={`${
+                                staff.role === 'BCBA' ? 'text-purple-400' : 
+                                staff.role === 'BS' ? 'text-blue-400' : 
+                                staff.role === 'Director' ? 'text-red-400' :
+                                staff.role === 'CC' ? 'text-yellow-400' :
+                                staff.role === 'EA' ? 'text-pink-400' :
+                                staff.role === 'Trainer' ? 'text-orange-400' :
+                                staff.role === 'MHA' ? 'text-indigo-400' :
+                                'text-green-400'
+                              }`}>
+                                {staff.role} {staff.name}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
