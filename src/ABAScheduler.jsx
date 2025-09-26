@@ -676,8 +676,27 @@ const AttendanceModal = ({ show, onClose, students, selectedDate, getStudentAtte
   );
 };
 
-const VarietyTrackerModal = ({ show, onClose, students, staff, getRecentAssignments, getVarietyScore, selectedDate }) => {
+const VarietyTrackerModal = ({ show, onClose, students, staff, getRecentAssignments, getVarietyScore, selectedDate, rawAssignmentHistory = [] }) => {
+  const [showHistoryTable, setShowHistoryTable] = useState(false);
+
   if (!show) return null;
+
+  // Helper function to get staff name by ID
+  const getStaffNameById = (staffId) => {
+    const staffMember = staff.find(s => s.id === staffId);
+    return staffMember ? `${staffMember.role} ${staffMember.name}` : `Unknown Staff (ID: ${staffId})`;
+  };
+
+  // Helper function to get student name by ID  
+  const getStudentNameById = (studentId) => {
+    const student = students.find(s => s.id === studentId);
+    return student ? student.name : `Unknown Student (ID: ${studentId})`;
+  };
+
+  // Sort history by date (most recent first)
+  const sortedHistory = rawAssignmentHistory
+    .filter(h => h.isFinal)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div 
@@ -690,7 +709,23 @@ const VarietyTrackerModal = ({ show, onClose, students, staff, getRecentAssignme
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
-          <h3 className="text-xl font-semibold">Assignment History & Variety Tracking</h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-semibold">Assignment History & Variety Tracking</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowHistoryTable(false)}
+                className={`px-3 py-1 rounded text-sm ${!showHistoryTable ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                Variety Scores
+              </button>
+              <button
+                onClick={() => setShowHistoryTable(true)}
+                className={`px-3 py-1 rounded text-sm ${showHistoryTable ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                History Table
+              </button>
+            </div>
+          </div>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center"
@@ -700,64 +735,111 @@ const VarietyTrackerModal = ({ show, onClose, students, staff, getRecentAssignme
         </div>
         
         <div className="px-6 py-4 overflow-y-scroll" style={{ height: 'calc(90vh - 140px)', maxHeight: 'calc(800px - 140px)' }}>
-          <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <h4 className="font-semibold text-purple-800 mb-2">How Variety Tracking Works</h4>
-            <div className="text-sm text-purple-700 space-y-1">
-              <div><strong>Variety Score:</strong> Higher scores = less recent work with student</div>
-              <div><strong>100 points:</strong> Never worked with student before</div>
-              <div><strong>10 points per day:</strong> Added for each day since last assignment</div>
-              <div><strong>-5 points each:</strong> Penalty for each of last 5 assignments with student</div>
-              <div><strong>Green = High variety, Yellow = Medium, Red = Low variety</strong></div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-6">
-            {students.map(student => {
-              const teamStaff = staff.filter(s => (student.teamStaff || []).includes(s.name) && s.available);
+          {!showHistoryTable ? (
+            <>
+              <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <h4 className="font-semibold text-purple-800 mb-2">How Variety Tracking Works</h4>
+                <div className="text-sm text-purple-700 space-y-1">
+                  <div><strong>Variety Score:</strong> Higher scores = less recent work with student</div>
+                  <div><strong>100 points:</strong> Never worked with student before</div>
+                  <div><strong>10 points per day:</strong> Added for each day since last assignment</div>
+                  <div><strong>-5 points each:</strong> Penalty for each of last 5 assignments with student</div>
+                  <div><strong>Green = High variety, Yellow = Medium, Red = Low variety</strong></div>
+                </div>
+              </div>
               
-              return (
-                <div key={student.id} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="mb-4">
-                    <h4 className="font-semibold text-lg text-gray-800">{student.name}</h4>
-                    <p className="text-sm text-gray-600">{student.ratio} • {student.lunchSchedule} Lunch • Team: {student.teamStaff?.length || 0} staff</p>
-                  </div>
+              <div className="grid grid-cols-1 gap-6">
+                {students.map(student => {
+                  const teamStaff = staff.filter(s => (student.teamStaff || []).includes(s.name) && s.available);
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {teamStaff.map(staffMember => {
-                      const recentAssignments = getRecentAssignments(student.id, staffMember.id);
-                      const varietyScore = getVarietyScore(student.id, staffMember.id, selectedDate);
+                  return (
+                    <div key={student.id} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-lg text-gray-800">{student.name}</h4>
+                        <p className="text-sm text-gray-600">{student.ratio} • {student.lunchSchedule} Lunch • Team: {student.teamStaff?.length || 0} staff</p>
+                      </div>
                       
-                      let varietyColor = 'bg-green-100 text-green-800 border-green-200';
-                      if (varietyScore < 30) varietyColor = 'bg-red-100 text-red-800 border-red-200';
-                      else if (varietyScore < 60) varietyColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {teamStaff.map(staffMember => {
+                          const recentAssignments = getRecentAssignments(student.id, staffMember.id);
+                          const varietyScore = getVarietyScore(student.id, staffMember.id, selectedDate);
                       
-                      return (
-                        <div key={staffMember.id} className={`border rounded-lg p-3 ${varietyColor}`}>
-                          <div className="font-medium text-sm">{staffMember.role} {staffMember.name}</div>
-                          <div className="text-xs mt-1">
-                            <div>Variety Score: <strong>{Math.round(varietyScore)}</strong></div>
-                            <div>Recent assignments: <strong>{recentAssignments.length}</strong></div>
-                            {recentAssignments.length > 0 && (
-                              <div className="mt-1 text-xs opacity-75">
-                                Last: {recentAssignments[0]}
-                                {recentAssignments.length > 1 && (
-                                  <div>Previous: {recentAssignments.slice(1, 3).join(', ')}</div>
+                          let varietyColor = 'bg-green-100 text-green-800 border-green-200';
+                          if (varietyScore < 30) varietyColor = 'bg-red-100 text-red-800 border-red-200';
+                          else if (varietyScore < 60) varietyColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                          
+                          return (
+                            <div key={staffMember.id} className={`border rounded-lg p-3 ${varietyColor}`}>
+                              <div className="font-medium text-sm">{staffMember.role} {staffMember.name}</div>
+                              <div className="text-xs mt-1">
+                                <div>Variety Score: <strong>{Math.round(varietyScore)}</strong></div>
+                                <div>Recent assignments: <strong>{recentAssignments.length}</strong></div>
+                                {recentAssignments.length > 0 && (
+                                  <div className="mt-1 text-xs opacity-75">
+                                    Last: {recentAssignments[0]}
+                                    {recentAssignments.length > 1 && (
+                                      <div>Previous: {recentAssignments.slice(1, 3).join(', ')}</div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div>
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">Finalized Assignment History</h4>
+                <p className="text-sm text-blue-700">This shows all finalized schedules that count toward variety tracking.</p>
+              </div>
+              
+              {sortedHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-4 py-2 text-left">Date</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Student Name</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Student ID</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Staff Name</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Staff ID</th>
+                        <th className="border border-gray-300 px-4 py-2 text-left">Session Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedHistory.map((assignment, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 px-4 py-2">{assignment.date}</td>
+                          <td className="border border-gray-300 px-4 py-2">{getStudentNameById(assignment.studentId)}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-xs text-gray-600">{assignment.studentId}</td>
+                          <td className="border border-gray-300 px-4 py-2">{getStaffNameById(assignment.staffId)}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-xs text-gray-600">{assignment.staffId}</td>
+                          <td className="border border-gray-300 px-4 py-2">{assignment.sessionType}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No finalized assignment history found.</p>
+                  <p className="text-sm mt-2">Use the "Finalize Schedule" button to save official schedules.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="flex justify-between items-center p-4 border-t bg-gray-50 rounded-b-lg">
-          <p className="text-sm text-gray-600">Staff with higher variety scores will be preferred during assignment</p>
+          <p className="text-sm text-gray-600">
+            {showHistoryTable ? 'Finalized assignments from SharePoint' : 'Staff with higher variety scores will be preferred during assignment'}
+          </p>
           <button 
             onClick={onClose}
             className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors font-medium"
@@ -919,6 +1001,7 @@ const ABAScheduler = () => {
   const [staffAttendance, setStaffAttendance] = useState({});
   const [scheduleAnalysis, setScheduleAnalysis] = useState(null);
   const [assignmentHistory, setAssignmentHistory] = useState({});
+  const [rawAssignmentHistory, setRawAssignmentHistory] = useState([]); // Raw SharePoint data with IDs
 
   // UI states  
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -1002,6 +1085,9 @@ const ABAScheduler = () => {
       
       setStaff(staffData);
       setStudents(clientData);
+      
+      // Store raw history data for display
+      setRawAssignmentHistory(historyData);
       
       // Process history data into the format expected by the app
       const processedHistory = {};
@@ -1371,7 +1457,8 @@ const ABAScheduler = () => {
       }
 
       // Add lunch coverage for students needing ANY lunch supervision
-      const needsLunchCoverage = student.requiresLunch1to1 || student.lunchPairing || student.ratio === '2:1';
+      const needsLunchCoverage = student.requiresLunch1to1 || student.lunchPairing || 
+        student.ratio === '2:1' || student.amRatio === '2:1' || student.pmRatio === '2:1';
       
       if (needsLunchCoverage && !isStudentAbsent(student, 'LUNCH')) {
         const lunchSessionType = student.lunchSchedule === 'First' ? 'Lunch 1 (11:30-12:00)' : 'Lunch 2 (12:00-12:30)';
@@ -2055,7 +2142,18 @@ const ABAScheduler = () => {
       if (conflictingAssignments.length > 0) {
         const isLegitimate2to1 = conflictingAssignments.every(conflictSession => {
           const conflictStudent = students.find(s => s.id === conflictSession.studentId);
-          return conflictStudent && conflictStudent.ratio === '2:1' && currentStudent.ratio === '2:1';
+          
+          // Determine which ratio to check based on session type
+          const getCurrentRatio = (student, sessionType) => {
+            if (sessionType.includes('AM')) return student.amRatio || student.ratio;
+            if (sessionType.includes('PM')) return student.pmRatio || student.ratio;
+            return student.ratio; // Fallback for other session types
+          };
+          
+          const conflictStudentRatio = getCurrentRatio(conflictStudent, conflictSession.sessionType);
+          const currentStudentRatio = getCurrentRatio(currentStudent, currentSessionType);
+          
+          return conflictStudent && conflictStudentRatio === '2:1' && currentStudentRatio === '2:1';
         });
         
         if (isLegitimate2to1) {
@@ -2122,7 +2220,8 @@ const ABAScheduler = () => {
           }
           
           // If it's the correct lunch period, check if student needs ANY kind of lunch coverage
-          const needsLunchCoverage = student.requiresLunch1to1 || student.lunchPairing || student.ratio === '2:1';
+          const needsLunchCoverage = student.requiresLunch1to1 || student.lunchPairing || 
+            student.ratio === '2:1' || student.amRatio === '2:1' || student.pmRatio === '2:1';
           
           if (!needsLunchCoverage) {
             return { display: 'N/A', class: 'bg-gray-50 text-gray-500' };
@@ -2542,7 +2641,7 @@ const ABAScheduler = () => {
                               )}
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
-                            {student.ratio === '2:1' ? (
+                            {(student.amRatio || student.ratio) === '2:1' ? (
                               <div className="grid grid-cols-2 gap-1 w-full mt-1">
                                 <div className="flex flex-col">
                                   <label className="text-xs font-semibold mb-1">Staff 1:</label>
@@ -2642,7 +2741,7 @@ const ABAScheduler = () => {
                               )}
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
-                            {student.ratio === '2:1' ? (
+                            {(student.pmRatio || student.ratio) === '2:1' ? (
                               <div className="grid grid-cols-2 gap-1 w-full mt-1">
                                 <div className="flex flex-col">
                                   <label className="text-xs font-semibold mb-1">Staff 1:</label>
@@ -2803,6 +2902,7 @@ const ABAScheduler = () => {
             getRecentAssignments={getRecentAssignments}
             getVarietyScore={getVarietyScore}
             selectedDate={selectedDate}
+            rawAssignmentHistory={rawAssignmentHistory}
           />
 
           <AnalysisModal
