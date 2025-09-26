@@ -216,6 +216,149 @@ class GraphService {
   }
 
   // ===================================================================
+  // ASSIGNMENT HISTORY OPERATIONS
+  // ===================================================================
+
+  async getAssignmentHistory() {
+    try {
+      const response = await this.graphClient
+        .api(`/sites/${this.siteId}/lists/${this.listIds.history}/items`)
+        .expand('fields')
+        .get();
+
+      return response.value.map(item => ({
+        id: item.fields.id || item.id,
+        studentId: item.fields.StudentId,
+        staffId: item.fields.StaffId,
+        date: item.fields.AssignmentDate,
+        sessionType: item.fields.SessionType,
+        isFinal: item.fields.IsFinal || false,
+        createdAt: item.fields.Created
+      }));
+    } catch (error) {
+      console.error("Failed to get assignment history:", error);
+      return [];
+    }
+  }
+
+  async saveFinalSchedule(scheduleData, date) {
+    try {
+      // Mark all existing assignments for this date as non-final
+      const existingHistory = await this.getAssignmentHistory();
+      const existingForDate = existingHistory.filter(h => h.date === date);
+      
+      for (const existing of existingForDate) {
+        if (existing.isFinal) {
+          await this.graphClient
+            .api(`/sites/${this.siteId}/lists/${this.listIds.history}/items/${existing.id}`)
+            .patch({
+              fields: {
+                IsFinal: false
+              }
+            });
+        }
+      }
+
+      // Save new final schedule
+      for (const session of scheduleData) {
+        await this.graphClient
+          .api(`/sites/${this.siteId}/lists/${this.listIds.history}/items`)
+          .post({
+            fields: {
+              StudentId: session.studentId,
+              StaffId: session.staffId,
+              AssignmentDate: date,
+              SessionType: session.sessionType,
+              IsFinal: true
+            }
+          });
+      }
+    } catch (error) {
+      console.error("Failed to save final schedule:", error);
+      throw error;
+    }
+  }
+
+  async addAssignmentToHistory(studentId, staffId, date, sessionType, isFinal = false) {
+    try {
+      await this.graphClient
+        .api(`/sites/${this.siteId}/lists/${this.listIds.history}/items`)
+        .post({
+          fields: {
+            StudentId: studentId,
+            StaffId: staffId,
+            AssignmentDate: date,
+            SessionType: sessionType,
+            IsFinal: isFinal
+          }
+        });
+    } catch (error) {
+      console.error("Failed to add assignment to history:", error);
+      throw error;
+    }
+  }
+
+  // ===================================================================
+  // SCHEDULE OPERATIONS
+  // ===================================================================
+
+  async saveSchedule(scheduleData, date) {
+    try {
+      // First, delete existing schedule for this date
+      const existingSchedule = await this.getSchedule(date);
+      for (const existing of existingSchedule) {
+        await this.graphClient
+          .api(`/sites/${this.siteId}/lists/${this.listIds.schedule}/items/${existing.id}`)
+          .delete();
+      }
+
+      // Then save new schedule
+      for (const session of scheduleData) {
+        await this.graphClient
+          .api(`/sites/${this.siteId}/lists/${this.listIds.schedule}/items`)
+          .post({
+            fields: {
+              StudentId: session.studentId,
+              StaffId: session.staffId,
+              SessionType: session.sessionType,
+              ScheduleDate: date,
+              Time: session.time,
+              IsManual: session.isManual || false,
+              IsLocked: session.isLocked || false
+            }
+          });
+      }
+    } catch (error) {
+      console.error("Failed to save schedule:", error);
+      throw error;
+    }
+  }
+
+  async getSchedule(date) {
+    try {
+      const response = await this.graphClient
+        .api(`/sites/${this.siteId}/lists/${this.listIds.schedule}/items`)
+        .expand('fields')
+        .filter(`fields/ScheduleDate eq '${date}'`)
+        .get();
+
+      return response.value.map(item => ({
+        id: item.fields.id || item.id,
+        studentId: item.fields.StudentId,
+        staffId: item.fields.StaffId,
+        sessionType: item.fields.SessionType,
+        date: item.fields.ScheduleDate,
+        time: item.fields.Time,
+        isManual: item.fields.IsManual,
+        isLocked: item.fields.IsLocked
+      }));
+    } catch (error) {
+      console.error("Failed to get schedule:", error);
+      return [];
+    }
+  }
+
+  // ===================================================================
   // UTILITY FUNCTIONS
   // ===================================================================
 

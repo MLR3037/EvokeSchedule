@@ -994,14 +994,27 @@ const ABAScheduler = () => {
     try {
       setAuthStatus('Loading data from SharePoint...');
       
-      const [staffData, clientData] = await Promise.all([
+      const [staffData, clientData, historyData] = await Promise.all([
         graphService.getAllStaff(),
-        graphService.getAllClients()
+        graphService.getAllClients(),
+        graphService.getAssignmentHistory()
       ]);
       
       setStaff(staffData);
       setStudents(clientData);
-      setAuthStatus(`Data loaded: ${staffData.length} staff, ${clientData.length} students`);
+      
+      // Process history data into the format expected by the app
+      const processedHistory = {};
+      historyData.filter(h => h.isFinal).forEach(assignment => {
+        const key = `${assignment.studentId}-${assignment.staffId}`;
+        if (!processedHistory[key]) {
+          processedHistory[key] = [];
+        }
+        processedHistory[key].push(assignment.date);
+      });
+      setAssignmentHistory(processedHistory);
+      
+      setAuthStatus(`Data loaded: ${staffData.length} staff, ${clientData.length} students, ${historyData.length} history entries`);
     } catch (error) {
       console.error('Failed to load data:', error);
       setAuthError('Failed to load data: ' + error.message);
@@ -1773,6 +1786,45 @@ const ABAScheduler = () => {
     setShowAnalysis(false);
   };
 
+  const handleFinalizeSchedule = async () => {
+    if (schedule.length === 0) {
+      alert('No schedule to finalize.');
+      return;
+    }
+
+    try {
+      const todaySchedule = getSessionsForDate();
+      if (todaySchedule.length === 0) {
+        alert('No schedule for the selected date.');
+        return;
+      }
+
+      const confirmed = window.confirm(`Are you sure you want to finalize the schedule for ${selectedDate}? This will save it as the official schedule for variety tracking.`);
+      
+      if (confirmed) {
+        await graphService.saveFinalSchedule(todaySchedule, selectedDate);
+        
+        // Update local assignment history
+        todaySchedule.forEach(session => {
+          const key = `${session.studentId}-${session.staffId}`;
+          setAssignmentHistory(prev => {
+            const existing = prev[key] || [];
+            const updated = [selectedDate, ...existing.filter(date => date !== selectedDate)].slice(0, 10);
+            return {
+              ...prev,
+              [key]: updated
+            };
+          });
+        });
+
+        alert('Schedule finalized successfully! This schedule is now saved for variety tracking.');
+      }
+    } catch (error) {
+      console.error('Failed to finalize schedule:', error);
+      alert('Failed to finalize schedule: ' + error.message);
+    }
+  };
+
   const handleExportCSV = () => {
     if (schedule.length === 0) {
       alert('No schedule data to export.');
@@ -1907,19 +1959,14 @@ const ABAScheduler = () => {
         });
         
         if (isLegitimate2to1) {
-          // Don't flag as conflict for legitimate 2:1 assignments
+          return false; // No conflict for valid 2:1 assignments
         } else {
-          return true; // Flag as conflict for non-2:1 double booking
+          return true; // Real conflict - same time, different students, not both 2:1
         }
       }
 
-      // Check for all-day assignment (staff assigned both AM and PM)
-      const staffAllAssignments = todaySessions.filter(session => session.staffId === staffId);
-      const hasAM = staffAllAssignments.some(s => s.sessionType.includes('AM'));
-      const hasPM = staffAllAssignments.some(s => s.sessionType.includes('PM'));
-      const isAllDay = hasAM && hasPM;
-
-      return isAllDay; // Flag staff working both AM and PM as potential conflict
+      // Don't flag all-day assignments as conflicts - this is normal
+      return false;
     };
 
     // Helper function to check if session types overlap in time
@@ -2112,7 +2159,7 @@ const ABAScheduler = () => {
                       )}
                       {scheduleAnalysis.unavailableAMStaff && scheduleAnalysis.unavailableAMStaff.length > 0 && (
                         <div className="pt-2 border-t">
-                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailableAMStaff.length}):</div>
+                          <div className="font-medium text-gray-600 mb-1">Staff Attendance - Absent ({scheduleAnalysis.unavailableAMStaff.length}):</div>
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                             {scheduleAnalysis.unavailableAMStaff.map(staff => (
                               <div key={staff.id} className={`${
@@ -2177,7 +2224,7 @@ const ABAScheduler = () => {
                       )}
                       {scheduleAnalysis.unavailablePMStaff && scheduleAnalysis.unavailablePMStaff.length > 0 && (
                         <div className="pt-2 border-t">
-                          <div className="font-medium text-gray-600 mb-1">Unavailable ({scheduleAnalysis.unavailablePMStaff.length}):</div>
+                          <div className="font-medium text-gray-600 mb-1">Staff Attendance - Absent ({scheduleAnalysis.unavailablePMStaff.length}):</div>
                           <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                             {scheduleAnalysis.unavailablePMStaff.map(staff => (
                               <div key={staff.id} className={`${
@@ -2229,6 +2276,17 @@ const ABAScheduler = () => {
               Auto-Assign Sessions
             </button>
             <button
+              onClick={handleFinalizeSchedule}
+              className={`px-4 py-2 rounded-md transition-colors ${
+                schedule.length > 0 
+                  ? 'bg-purple-500 text-white hover:bg-purple-600' 
+                  : 'bg-gray-400 text-white cursor-not-allowed'
+              }`}
+              disabled={schedule.length === 0}
+            >
+              ✓ Finalize Schedule
+            </button>
+            <button
               onClick={handleExportCSV}
               className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
                 schedule.length > 0 
@@ -2256,7 +2314,7 @@ const ABAScheduler = () => {
               onClick={() => setShowAttendanceManager(true)}
               className="bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition-colors"
             >
-              Attendance
+              Staff & Client Attendance
             </button>
             <button
               onClick={() => setShowTeamManager(true)}
