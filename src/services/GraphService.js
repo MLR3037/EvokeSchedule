@@ -149,6 +149,7 @@ class GraphService {
       return response.value.map(item => ({
         id: item.fields.id || item.id,
         name: item.fields.Title,
+        program: item.fields.Program,
         ratio: item.fields.Ratio,
         amRatio: item.fields.AmRatio,
         pmRatio: item.fields.PmRatio,
@@ -171,6 +172,7 @@ class GraphService {
         .post({
           fields: {
             Title: clientData.name,
+            Program: clientData.program,
             Ratio: clientData.ratio,
             AmRatio: clientData.amRatio,
             PmRatio: clientData.pmRatio,
@@ -185,6 +187,7 @@ class GraphService {
       return {
         id: response.fields.id || response.id,
         name: response.fields.Title,
+        program: response.fields.Program,
         ratio: response.fields.Ratio,
         amRatio: response.fields.AmRatio,
         pmRatio: response.fields.PmRatio,

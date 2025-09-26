@@ -35,7 +35,8 @@ function shuffleArray(array) {
 }
 
 function getProgramForStudent(student) {
-  return PRIMARY_STUDENTS.has(student.name.toUpperCase()) ? 'Primary/EI' : 'Secondary/Transition';
+  // Use the program field if available, otherwise fall back to the hardcoded list for existing students
+  return student.program || (PRIMARY_STUDENTS.has(student.name.toUpperCase()) ? 'Primary/EI' : 'Secondary/Transition');
 }
 
 // =============================================================================
@@ -152,6 +153,7 @@ const AddStaffModal = ({ show, onClose, onAddStaff }) => {
 const AddClientModal = ({ show, onClose, onAddClient, availableStaff }) => {
   const [clientData, setClientData] = useState({
     name: '',
+    program: 'Primary/EI',
     ratio: '1:1',
     amRatio: '1:1',
     pmRatio: '1:1',
@@ -172,6 +174,7 @@ const AddClientModal = ({ show, onClose, onAddClient, availableStaff }) => {
       await onAddClient(clientData);
       setClientData({
         name: '',
+        program: 'Primary/EI',
         ratio: '1:1',
         amRatio: '1:1',
         pmRatio: '1:1',
@@ -216,6 +219,18 @@ const AddClientModal = ({ show, onClose, onAddClient, availableStaff }) => {
               placeholder="Enter client name"
               required
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
+            <select
+              value={clientData.program}
+              onChange={(e) => setClientData(prev => ({ ...prev, program: e.target.value }))}
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Primary/EI">Primary/EI</option>
+              <option value="Secondary/Transition">Secondary/Transition</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -350,7 +365,10 @@ const StaffModal = ({ show, onClose, staff, onToggleAvailability, selectedDate, 
   const filteredStaff = staff
     .filter(staffMember => 
       staffMember.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staffMember.role.toLowerCase().includes(searchTerm.toLowerCase())
+      // More precise role matching - only match complete words
+      (searchTerm.trim() && staffMember.role.toLowerCase().split(' ').some(word => 
+        word.startsWith(searchTerm.toLowerCase())
+      ))
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1435,7 +1453,7 @@ const ABAScheduler = () => {
       const pmSessionType = student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)';
 
       if (!lock.AM && !isStudentAbsent(student, 'AM')) {
-        const amRatio = student.amRatio || student.ratio;
+        const amRatio = student.amRatio !== undefined ? student.amRatio : student.ratio;
         assignmentQueue.push({
           studentId: student.id,
           sessionType: amSessionType,
@@ -1447,7 +1465,7 @@ const ABAScheduler = () => {
       }
 
       if (!lock.PM && !isStudentAbsent(student, 'PM')) {
-        const pmRatio = student.pmRatio || student.ratio;
+        const pmRatio = student.pmRatio !== undefined ? student.pmRatio : student.ratio;
         assignmentQueue.push({
           studentId: student.id,
           sessionType: pmSessionType,
@@ -1497,8 +1515,182 @@ const ABAScheduler = () => {
       return 0;
     });
 
-    // Multi-phase assignment algorithm
-    console.log('Phase 1: Assigning TEAM RBTs and BS only');
+    // Helper function to find team RBT/BS assignments that can be reassigned
+    const findReassignableTeamStaff = (targetStudent, sessionTimeSlot) => {
+      const teamStaff = (targetStudent.teamStaff || [])
+        .map(name => getStaffByName(name))
+        .filter(member => member && ['RBT', 'BS'].includes(member.role) && member.available);
+      
+      const reassignableStaff = [];
+      
+      for (const staff of teamStaff) {
+        const currentAssignments = newSchedule.filter(session => 
+          session.staffId === staff.id && 
+          session.date === selectedDate &&
+          ((sessionTimeSlot === 'AM' && session.sessionType.includes('AM')) ||
+           (sessionTimeSlot === 'PM' && session.sessionType.includes('PM')))
+        );
+        
+        if (currentAssignments.length > 0) {
+          const currentAssignment = currentAssignments[0];
+          const currentStudent = students.find(s => s.id === currentAssignment.studentId);
+          
+          if (currentStudent) {
+            reassignableStaff.push({
+              staffMember: staff,
+              currentAssignment: currentAssignment,
+              currentStudent: currentStudent
+            });
+          }
+        }
+      }
+      
+      return reassignableStaff;
+    };
+
+    // Helper function to perform cascading reassignment
+    const performCascadingReassignment = (targetAssignment) => {
+      const targetStudent = students.find(s => s.id === targetAssignment.studentId);
+      if (!targetStudent) return false;
+      
+      const sessionTimeSlot = targetAssignment.sessionType.includes('AM') ? 'AM' : 'PM';
+      const reassignableStaff = findReassignableTeamStaff(targetStudent, sessionTimeSlot);
+      
+      console.log(`🔄 Attempting cascading reassignment for ${targetStudent.name} (${sessionTimeSlot})`);
+      console.log(`Found ${reassignableStaff.length} reassignable team staff members`);
+      
+      for (const { staffMember, currentAssignment, currentStudent } of reassignableStaff) {
+        console.log(`🔄 Checking if ${staffMember.name} can be moved from ${currentStudent.name} to ${targetStudent.name}`);
+        
+        // Check if the current student has other team options for reassignment
+        const currentStudentAlternatives = (currentStudent.teamStaff || [])
+          .map(name => getStaffByName(name))
+          .filter(member => 
+            member && 
+            ['RBT', 'BS', 'BCBA'].includes(member.role) &&
+            member.available &&
+            member.id !== staffMember.id // Don't include the staff we're trying to move
+          );
+        
+        // Filter alternatives that are actually available for this time slot
+        const availableAlternatives = currentStudentAlternatives.filter(alt => {
+          const isAM = currentAssignment.sessionType.includes('AM');
+          const isPM = currentAssignment.sessionType.includes('PM');
+          
+          if (isAM && staffUsage[alt.id].am) return false;
+          if (isPM && staffUsage[alt.id].pm) return false;
+          
+          // Prevent all-day assignments
+          const pairingKey = `${currentStudent.id}-${alt.id}`;
+          if (studentStaffPairings[pairingKey]) return false;
+          
+          return true;
+        });
+        
+        console.log(`Found ${availableAlternatives.length} alternatives for ${currentStudent.name}`);
+        
+        if (availableAlternatives.length > 0) {
+          // We can reassign! Move the staff member
+          console.log(`✅ Performing cascading reassignment: Moving ${staffMember.name} from ${currentStudent.name} to ${targetStudent.name}`);
+          
+          // Remove the current assignment
+          const sessionIndex = newSchedule.findIndex(s => s.id === currentAssignment.id);
+          if (sessionIndex >= 0) {
+            newSchedule.splice(sessionIndex, 1);
+            
+            // Update staff usage - free up the staff member
+            const isAM = currentAssignment.sessionType.includes('AM');
+            const isPM = currentAssignment.sessionType.includes('PM');
+            if (isAM) staffUsage[staffMember.id].am = false;
+            if (isPM) staffUsage[staffMember.id].pm = false;
+            staffUsage[staffMember.id].sessions -= 1;
+            
+            // Remove the student-staff pairing
+            const oldPairingKey = `${currentStudent.id}-${staffMember.id}`;
+            delete studentStaffPairings[oldPairingKey];
+          }
+          
+          // Choose the best alternative (prefer RBT/BS over BCBA, use variety scoring)
+          availableAlternatives.sort((a, b) => {
+            // Prefer RBT/BS over BCBA for current student
+            const aIsRBTBS = ['RBT', 'BS'].includes(a.role);
+            const bIsRBTBS = ['RBT', 'BS'].includes(b.role);
+            
+            if (aIsRBTBS !== bIsRBTBS) {
+              return aIsRBTBS ? -1 : 1;
+            }
+            
+            // Use variety scoring
+            const aVarietyScore = getVarietyScore(currentStudent.id, a.id, selectedDate);
+            const bVarietyScore = getVarietyScore(currentStudent.id, b.id, selectedDate);
+            return bVarietyScore - aVarietyScore;
+          });
+          
+          const alternativeStaff = availableAlternatives[0];
+          
+          // Create new assignment for current student with alternative staff
+          const newAlternativeSession = {
+            id: Date.now() + Math.random(),
+            studentId: currentStudent.id,
+            staffId: alternativeStaff.id,
+            sessionType: currentAssignment.sessionType,
+            date: selectedDate,
+            time: SESSION_TYPES[currentAssignment.sessionType]
+          };
+          
+          newSchedule.push(newAlternativeSession);
+          addAssignmentToHistory(currentStudent.id, alternativeStaff.id, selectedDate);
+          
+          // Update staff usage for alternative staff
+          const isAM = currentAssignment.sessionType.includes('AM');
+          const isPM = currentAssignment.sessionType.includes('PM');
+          if (isAM) staffUsage[alternativeStaff.id].am = true;
+          if (isPM) staffUsage[alternativeStaff.id].pm = true;
+          staffUsage[alternativeStaff.id].sessions += 1;
+          
+          // Track new pairing
+          const newPairingKey = `${currentStudent.id}-${alternativeStaff.id}`;
+          studentStaffPairings[newPairingKey] = true;
+          
+          console.log(`✅ Assigned alternative: ${alternativeStaff.role} ${alternativeStaff.name} to ${currentStudent.name}`);
+          
+          // Now assign the original staff member to the target student
+          const targetSession = {
+            id: Date.now() + Math.random(),
+            studentId: targetStudent.id,
+            staffId: staffMember.id,
+            sessionType: targetAssignment.sessionType,
+            date: selectedDate,
+            time: SESSION_TYPES[targetAssignment.sessionType]
+          };
+          
+          newSchedule.push(targetSession);
+          addAssignmentToHistory(targetStudent.id, staffMember.id, selectedDate);
+          
+          // Update staff usage for moved staff
+          const targetIsAM = targetAssignment.sessionType.includes('AM');
+          const targetIsPM = targetAssignment.sessionType.includes('PM');
+          if (targetIsAM) staffUsage[staffMember.id].am = true;
+          if (targetIsPM) staffUsage[staffMember.id].pm = true;
+          staffUsage[staffMember.id].sessions += 1;
+          
+          // Track new pairing
+          const targetPairingKey = `${targetStudent.id}-${staffMember.id}`;
+          studentStaffPairings[targetPairingKey] = true;
+          
+          console.log(`✅ Cascading complete: ${staffMember.role} ${staffMember.name} now assigned to ${targetStudent.name}`);
+          
+          targetAssignment.assigned = true;
+          return true;
+        }
+      }
+      
+      console.log(`❌ Could not perform cascading reassignment for ${targetStudent.name} - no viable alternatives found`);
+      return false;
+    };
+
+    // Multi-phase assignment algorithm with cascading reassignment
+    console.log('Phase 1: Assigning TEAM RBTs and BS with cascading reassignment');
     const primaryRoles = ['RBT', 'BS'];
     
     for (let pass = 1; pass <= 5; pass++) {
@@ -1590,6 +1782,13 @@ const ABAScheduler = () => {
               });
               
               console.log(`2:1 Team assignment: ${selectedStaff1.role} ${selectedStaff1.name} + ${selectedStaff2.role} ${selectedStaff2.name} to ${student.name} - ${assignment.sessionType}`);
+            } else {
+              // Try cascading reassignment for 2:1 assignments
+              console.log(`🔄 Insufficient team staff for 2:1 assignment (${candidateStaff.length}/2 needed). Attempting cascading reassignment for ${student.name}`);
+              const success = performCascadingReassignment(assignment);
+              if (!success) {
+                console.log(`❌ Cascading reassignment failed for 2:1 ${student.name} - ${assignment.sessionType}`);
+              }
             }
           } else {
             // Handle 1:1 assignments
@@ -1627,6 +1826,13 @@ const ABAScheduler = () => {
               staffUsage[selectedStaff.id].sessions += 1;
               
               console.log(`Team ${selectedStaff.role} - ${selectedStaff.name} to ${student.name} - ${assignment.sessionType} (variety: ${varietyScore})`);
+            } else {
+              // Try cascading reassignment for 1:1 assignments
+              console.log(`🔄 No available team staff for ${student.name}. Attempting cascading reassignment...`);
+              const success = performCascadingReassignment(assignment);
+              if (!success) {
+                console.log(`❌ Cascading reassignment failed for ${student.name} - ${assignment.sessionType}`);
+              }
             }
           }
         });
@@ -1634,49 +1840,89 @@ const ABAScheduler = () => {
       
       const remainingUnassigned = assignmentQueue.filter(a => !a.assigned).length;
       if (remainingUnassigned === 0) {
-        console.log(`SUCCESS: All sessions assigned using TEAM staff only after pass ${pass}`);
+        console.log(`SUCCESS: All sessions assigned using TEAM staff with cascading after pass ${pass}`);
         break;
       }
     }
 
-    // Phase 2: System-wide assignment for any remaining unassigned sessions
+    // Phase 2: BCBA fallback for unassigned sessions (team BCBAs only)
     const unassignedSessions = assignmentQueue.filter(a => !a.assigned);
     if (unassignedSessions.length > 0) {
-      console.log(`Phase 2: System-wide assignment for ${unassignedSessions.length} remaining sessions`);
+      console.log(`Phase 2: BCBA fallback for ${unassignedSessions.length} remaining sessions (TEAM BCBAs ONLY)`);
       
-      for (let pass = 1; pass <= 10; pass++) {
+      // PRIORITY SORTING: Sort unassigned sessions by priority
+      unassignedSessions.sort((a, b) => {
+        const studentA = students.find(s => s.id === a.studentId);
+        const studentB = students.find(s => s.id === b.studentId);
+        if (!studentA || !studentB) return 0;
+        
+        // 1. Priority: 2:1 students first
+        const isAM_A = a.sessionType.includes('AM');
+        const isPM_A = a.sessionType.includes('PM');
+        const isAM_B = b.sessionType.includes('AM');
+        const isPM_B = b.sessionType.includes('PM');
+        
+        const ratioA = isAM_A ? (studentA.amRatio !== undefined ? studentA.amRatio : studentA.ratio) :
+                      isPM_A ? (studentA.pmRatio !== undefined ? studentA.pmRatio : studentA.ratio) :
+                      studentA.ratio;
+        const ratioB = isAM_B ? (studentB.amRatio !== undefined ? studentB.amRatio : studentB.ratio) :
+                      isPM_B ? (studentB.pmRatio !== undefined ? studentB.pmRatio : studentB.ratio) :
+                      studentB.ratio;
+        
+        const is2to1_A = ratioA === '2:1';
+        const is2to1_B = ratioB === '2:1';
+        
+        if (is2to1_A !== is2to1_B) {
+          return is2to1_A ? -1 : 1; // 2:1 students first
+        }
+        
+        // 2. Priority: Students with smaller team sizes (harder to staff)
+        const teamSizeA = (studentA.teamStaff || []).length;
+        const teamSizeB = (studentB.teamStaff || []).length;
+        
+        if (teamSizeA !== teamSizeB) {
+          return teamSizeA - teamSizeB; // Smaller teams first
+        }
+        
+        return 0; // Equal priority
+      });
+      
+      for (let pass = 1; pass <= 3; pass++) {
         unassignedSessions.forEach(assignment => {
           if (assignment.assigned) return;
           
           const student = students.find(s => s.id === assignment.studentId);
           if (!student) return;
 
-          // For AM/PM sessions, ONLY use team staff - never system-wide
-          const isAMPM = assignment.sessionType.includes('AM') || assignment.sessionType.includes('PM');
-          let availableStaff;
+          // TEAM BCBAs ONLY for AM/PM sessions
+          console.log(`DEBUG: ${student.name} team staff for BCBA fallback:`, student.teamStaff);
           
-          if (isAMPM) {
-            // Restrict to team staff only for AM/PM sessions
-            availableStaff = (student.teamStaff || [])
-              .map(name => getStaffByName(name))
-              .filter(member => member && member.available);
+          const teamBCBAs = (student.teamStaff || [])
+            .map(name => getStaffByName(name))
+            .filter(member => 
+              member && 
+              member.role === 'BCBA' &&
+              member.available
+            );
+          
+          console.log(`DEBUG: ${student.name} available team BCBAs:`, teamBCBAs.map(m => `${m.name} (${m.role})`));
               
-            if (availableStaff.length === 0) {
-              console.log(`⚠️ No team staff available for ${student.name} - ${assignment.sessionType}. Skipping system-wide assignment.`);
-              return; // Skip this assignment - don't assign non-team staff
-            }
-          } else {
-            // For lunch/other sessions, allow system-wide assignment
-            availableStaff = staff.filter(member => member.available);
+          if (teamBCBAs.length === 0) {
+            console.log(`⚠️ No team BCBAs available for ${student.name} - ${assignment.sessionType}. Session will remain UNASSIGNED.`);
+            return; // Skip this assignment - maintain team-only restriction
           }
           
           // Filter by session time availability and prevent all-day assignments
-          availableStaff = availableStaff.filter(member => {
+          let availableTeamBCBAs = teamBCBAs.filter(member => {
             const isAM = assignment.sessionType.includes('AM');
             const isPM = assignment.sessionType.includes('PM');
             
             if (isAM && staffUsage[member.id].am) return false;
             if (isPM && staffUsage[member.id].pm) return false;
+            
+            // Check daily attendance - exclude if absent
+            const sessionForAttendance = assignment.sessionType.includes('AM') ? 'AM' : 'PM';
+            if (isStaffAbsent(member, sessionForAttendance)) return false;
             
             // Prevent same staff from being assigned to same student all day
             const pairingKey = `${assignment.studentId}-${member.id}`;
@@ -1685,22 +1931,31 @@ const ABAScheduler = () => {
             return true;
           });
 
-          if (availableStaff.length > 0) {
-            // Sort by variety score
-            availableStaff.sort((a, b) => {
+          console.log(`DEBUG: Available team BCBAs for ${student.name} - ${assignment.sessionType}: ${availableTeamBCBAs.length}`);
+
+          if (availableTeamBCBAs.length > 0) {
+            // Enhanced sorting: variety score and workload balance
+            availableTeamBCBAs.sort((a, b) => {
               const aVarietyScore = getVarietyScore(assignment.studentId, a.id, selectedDate);
               const bVarietyScore = getVarietyScore(assignment.studentId, b.id, selectedDate);
               
-              // Prefer RBT/BS over BCBA for system-wide assignments too
-              const aRoleBonus = ['RBT', 'BS'].includes(a.role) ? 20 : 0;
-              const bRoleBonus = ['RBT', 'BS'].includes(b.role) ? 20 : 0;
+              // For BCBAs, prefer those with fewer current assignments
+              const aCurrentLoad = staffUsage[a.id].sessions;
+              const bCurrentLoad = staffUsage[b.id] ? staffUsage[b.id].sessions : 0;
               
-              return (bVarietyScore + bRoleBonus) - (aVarietyScore + aRoleBonus);
+              if (aCurrentLoad !== bCurrentLoad) {
+                return aCurrentLoad - bCurrentLoad; // Lower workload first
+              }
+              
+              // If workload is equal, use variety
+              return bVarietyScore - aVarietyScore;
             });
 
-            const selectedStaff = availableStaff[0];
+            const selectedStaff = availableTeamBCBAs[0];
             const varietyScore = getVarietyScore(assignment.studentId, selectedStaff.id, selectedDate);
             assignment.assigned = true;
+            
+            console.log(`✅ BCBA Fallback: Assigned ${selectedStaff.role} ${selectedStaff.name} to ${student.name} - ${assignment.sessionType}`);
             
             const newSession = {
               id: Date.now() + Math.random(),
@@ -1724,22 +1979,165 @@ const ABAScheduler = () => {
             if (isPM) staffUsage[selectedStaff.id].pm = true;
             staffUsage[selectedStaff.id].sessions += 1;
             
-            const assignmentType = isAMPM ? 'TEAM-ONLY' : 'System-wide';
-            console.log(`${assignmentType} ${selectedStaff.role} - ${selectedStaff.name} to ${student.name} - ${assignment.sessionType} (variety: ${varietyScore})`);
+            console.log(`BCBA FALLBACK ${selectedStaff.role} - ${selectedStaff.name} to ${student.name} - ${assignment.sessionType} (variety: ${varietyScore})`);
           }
         });
         
         const remainingUnassigned = unassignedSessions.filter(a => !a.assigned).length;
+        console.log(`BCBA Fallback Pass ${pass} completed. Remaining unassigned: ${remainingUnassigned}`);
         if (remainingUnassigned === 0) {
-          console.log(`SUCCESS: All sessions assigned after system-wide pass ${pass}`);
+          console.log(`SUCCESS: All sessions assigned after BCBA fallback pass ${pass}`);
           break;
         }
+      }
+      
+      // Final status report
+      const finalUnassigned = unassignedSessions.filter(a => !a.assigned);
+      if (finalUnassigned.length > 0) {
+        console.log(`🚨 FINAL UNASSIGNED SESSIONS: ${finalUnassigned.length} sessions could not be assigned while maintaining team-only restrictions`);
+        finalUnassigned.forEach(assignment => {
+          const student = students.find(s => s.id === assignment.studentId);
+          console.log(`   - ${student ? student.name : 'Unknown'}: ${assignment.sessionType}`);
+        });
       }
     }
 
     // Phase 3: Lunch Coverage Assignment
     console.log('Phase 3: Assigning lunch coverage for 1:1 supervision');
+    
+    // Group lunch assignments by pairing to ensure paired students get same staff
+    const lunchPairGroups = new Map();
+    const individualLunchQueue = [];
+    
     lunchQueue.forEach(lunchAssignment => {
+      const student = students.find(s => s.id === lunchAssignment.studentId);
+      if (!student) return;
+      
+      if (student.lunchPairing && student.lunchPairing.length > 0) {
+        // Create a group key for paired students
+        const pairKey = [student.id, ...student.lunchPairing].sort().join('-');
+        
+        if (!lunchPairGroups.has(pairKey)) {
+          lunchPairGroups.set(pairKey, []);
+        }
+        lunchPairGroups.get(pairKey).push(lunchAssignment);
+      } else {
+        individualLunchQueue.push(lunchAssignment);
+      }
+    });
+    
+    // Process paired lunch groups first
+    for (const [pairKey, pairAssignments] of lunchPairGroups) {
+      if (pairAssignments.length === 0) continue;
+      
+      // All students in the pair should have the same lunch schedule
+      const sessionType = pairAssignments[0].sessionType;
+      const studentNames = pairAssignments.map(assignment => {
+        const student = students.find(s => s.id === assignment.studentId);
+        return student ? student.name : 'Unknown';
+      }).join(', ');
+      
+      // Find available staff for this lunch group
+      let lunchCandidates = staff.filter(member => {
+        if (!member.available) return false;
+        
+        // RULE: RBTs MUST be on ALL paired students' teams for lunch assignments
+        if (member.role === 'RBT') {
+          const allStudentsInPair = pairAssignments.map(assignment => 
+            students.find(s => s.id === assignment.studentId)
+          ).filter(s => s);
+          
+          // RBT must be on every student's team in the pairing
+          const isOnAllTeams = allStudentsInPair.every(student => 
+            student.teamStaff && student.teamStaff.includes(member.name)
+          );
+          
+          if (!isOnAllTeams) {
+            return false; // RBT not on all paired students' teams - exclude from lunch candidates
+          }
+        }
+        // Other roles (BCBA, Teacher, EA, MHA, CC, etc.) don't need to be on team for lunch
+        
+        const hasDirectLunchConflict = newSchedule.some(session => 
+          session.staffId === member.id && 
+          session.date === selectedDate &&
+          session.sessionType === sessionType
+        );
+        
+        let hasTimeConflict = false;
+        if (sessionType === 'Lunch 1 (11:30-12:00)') {
+          hasTimeConflict = newSchedule.some(session =>
+            session.staffId === member.id && 
+            session.date === selectedDate &&
+            session.sessionType === 'AM Session (8:45-12:00)'
+          );
+        } else if (sessionType === 'Lunch 2 (12:00-12:30)') {
+          hasTimeConflict = newSchedule.some(session =>
+            session.staffId === member.id && 
+            session.date === selectedDate &&
+            session.sessionType === 'PM (12:00-15:00)'
+          );
+        }
+        
+        return !hasDirectLunchConflict && !hasTimeConflict;
+      });
+
+      if (lunchCandidates.length > 0) {
+        // Sort by scheduling status first, then by role priority
+        lunchCandidates.sort((a, b) => {
+          const aIsScheduled = staffUsage[a.id].sessions > 0;
+          const bIsScheduled = staffUsage[b.id].sessions > 0;
+          
+          if (aIsScheduled !== bIsScheduled) {
+            return aIsScheduled ? 1 : -1;
+          }
+          
+          const getRolePriorityForLunch = (role) => {
+            if (role === 'BCBA') return 1;
+            if (role === 'Teacher') return 2;
+            if (role === 'EA') return 3;
+            if (role === 'MHA') return 4;
+            if (role === 'CC') return 5;
+            if (role === 'Trainer') return 6;
+            if (role === 'BS') return 7;
+            if (role === 'RBT') return 8;
+            if (role === 'Director') return 9;
+            return 10;
+          };
+          
+          const aRolePriority = getRolePriorityForLunch(a.role);
+          const bRolePriority = getRolePriorityForLunch(b.role);
+          return aRolePriority - bRolePriority;
+        });
+        
+        const selectedStaff = lunchCandidates[0];
+        const isUnscheduled = staffUsage[selectedStaff.id].sessions === 0;
+        
+        // Assign the same staff member to all students in the pair
+        pairAssignments.forEach(assignment => {
+          const lunchSession = {
+            id: Date.now() + Math.random(),
+            studentId: assignment.studentId,
+            staffId: selectedStaff.id,
+            sessionType: assignment.sessionType,
+            date: selectedDate,
+            time: SESSION_TYPES[assignment.sessionType],
+            isPairedLunch: true
+          };
+          
+          newSchedule.push(lunchSession);
+        });
+        
+        staffUsage[selectedStaff.id].lunchCoverage += pairAssignments.length;
+        
+        console.log(`Paired lunch coverage: ${selectedStaff.role} ${selectedStaff.name} for ${studentNames} - ${sessionType}${isUnscheduled ? ' (unscheduled staff - preferred)' : ' (already scheduled)'}`);
+      } else {
+        console.log(`WARNING: No available staff for paired lunch coverage for ${studentNames} - ${sessionType}`);
+      }
+    }
+    
+    // Process individual lunch assignments
+    individualLunchQueue.forEach(lunchAssignment => {
       const student = students.find(s => s.id === lunchAssignment.studentId);
       if (!student) return;
 
@@ -1747,8 +2145,15 @@ const ABAScheduler = () => {
       let lunchCandidates = staff.filter(member => {
         if (!member.available) return false;
         
-        // Check if staff is free during the specific lunch time slot
-        const lunchTimeSlot = lunchAssignment.sessionType; // e.g., "Lunch 1 (11:30-12:00)" or "Lunch 2 (12:00-12:30)"
+        // RULE: RBTs MUST be on the student's team for lunch assignments
+        if (member.role === 'RBT') {
+          if (!student.teamStaff || !student.teamStaff.includes(member.name)) {
+            return false; // RBT not on team - exclude from lunch candidates
+          }
+        }
+        // Other roles (BCBA, Teacher, EA, MHA, CC, etc.) don't need to be on team for lunch
+        
+        const lunchTimeSlot = lunchAssignment.sessionType;
         
         const hasDirectLunchConflict = newSchedule.some(session => 
           session.staffId === member.id && 
@@ -1756,20 +2161,18 @@ const ABAScheduler = () => {
           session.sessionType === lunchTimeSlot
         );
         
-        // For Lunch 1 (11:30-12:00), check if staff has AM session that goes until 12:00
-        // For Lunch 2 (12:00-12:30), check if staff has PM session that starts at 12:00
         let hasTimeConflict = false;
         if (lunchTimeSlot === 'Lunch 1 (11:30-12:00)') {
           hasTimeConflict = newSchedule.some(session =>
             session.staffId === member.id && 
             session.date === selectedDate &&
-            session.sessionType === 'AM Session (8:45-12:00)' // Only conflicts with extended AM
+            session.sessionType === 'AM Session (8:45-12:00)'
           );
         } else if (lunchTimeSlot === 'Lunch 2 (12:00-12:30)') {
           hasTimeConflict = newSchedule.some(session =>
             session.staffId === member.id && 
             session.date === selectedDate &&
-            session.sessionType === 'PM (12:00-15:00)' // Only conflicts with early PM start
+            session.sessionType === 'PM (12:00-15:00)'
           );
         }
         
@@ -1785,19 +2188,35 @@ const ABAScheduler = () => {
       const finalCandidates = staffNotWorkingWithStudent.length > 0 ? staffNotWorkingWithStudent : lunchCandidates;
 
       if (finalCandidates.length > 0) {
-        // Sort by sessions count (prefer less busy staff), then by role priority
+        // Sort by scheduling status first, then by role priority
         finalCandidates.sort((a, b) => {
-          const aSessions = staffUsage[a.id].sessions;
-          const bSessions = staffUsage[b.id].sessions;
-          if (aSessions !== bSessions) return aSessions - bSessions;
+          const aIsScheduled = staffUsage[a.id].sessions > 0;
+          const bIsScheduled = staffUsage[b.id].sessions > 0;
           
-          // If same session count, prefer non-BCBA staff for lunch coverage
-          const aRolePriority = a.role === 'BCBA' ? 3 : (a.role === 'BS' ? 2 : 1);
-          const bRolePriority = b.role === 'BCBA' ? 3 : (b.role === 'BS' ? 2 : 1);
+          if (aIsScheduled !== bIsScheduled) {
+            return aIsScheduled ? 1 : -1;
+          }
+          
+          const getRolePriorityForLunch = (role) => {
+            if (role === 'BCBA') return 1;
+            if (role === 'Teacher') return 2;
+            if (role === 'EA') return 3;
+            if (role === 'MHA') return 4;
+            if (role === 'CC') return 5;
+            if (role === 'Trainer') return 6;
+            if (role === 'BS') return 7;
+            if (role === 'RBT') return 8;
+            if (role === 'Director') return 9;
+            return 10;
+          };
+          
+          const aRolePriority = getRolePriorityForLunch(a.role);
+          const bRolePriority = getRolePriorityForLunch(b.role);
           return aRolePriority - bRolePriority;
         });
         
         const selectedStaff = finalCandidates[0];
+        const isUnscheduled = staffUsage[selectedStaff.id].sessions === 0;
         
         const lunchSession = {
           id: Date.now() + Math.random(),
@@ -1811,7 +2230,7 @@ const ABAScheduler = () => {
         newSchedule.push(lunchSession);
         staffUsage[selectedStaff.id].lunchCoverage += 1;
         
-        console.log(`Lunch coverage: ${selectedStaff.role} ${selectedStaff.name} for ${student.name} - ${lunchAssignment.sessionType}`);
+        console.log(`Individual lunch coverage: ${selectedStaff.role} ${selectedStaff.name} for ${student.name} - ${lunchAssignment.sessionType}${isUnscheduled ? ' (unscheduled staff - preferred)' : ' (already scheduled)'}`);
       } else {
         console.log(`WARNING: No available staff for lunch coverage for ${student.name} - ${lunchAssignment.sessionType}`);
         console.log('Available staff:', staff.filter(s => s.available).map(s => `${s.role} ${s.name}`));
@@ -1822,6 +2241,24 @@ const ABAScheduler = () => {
     // Generate analysis
     const analysis = generateAnalysis(newSchedule);
     setScheduleAnalysis(analysis);
+
+    // DEBUGGING: Log unassigned sessions and available staff for troubleshooting
+    const finalUnassigned = unassignedSessions.filter(a => !a.assigned);
+    if (finalUnassigned.length > 0) {
+      console.log('\n🚨 FINAL UNASSIGNED SESSIONS:');
+      finalUnassigned.forEach(assignment => {
+        const student = students.find(s => s.id === assignment.studentId);
+        console.log(`- ${student?.name || 'Unknown'}: ${assignment.sessionType}`);
+      });
+      
+      // Show available RBTs and BS staff who could potentially be assigned
+      const availableRBTs = staff.filter(s => s.available && s.role === 'RBT');
+      const availableBS = staff.filter(s => s.available && s.role === 'BS');
+      
+      console.log('\n📊 AVAILABLE PRIMARY STAFF:');
+      console.log(`RBTs (${availableRBTs.length}):`, availableRBTs.map(s => `${s.name} (absent: ${getStaffAttendance(s.id, selectedDate)})`));
+      console.log(`BS (${availableBS.length}):`, availableBS.map(s => `${s.name} (absent: ${getStaffAttendance(s.id, selectedDate)})`));
+    }
 
     return newSchedule;
   };
@@ -1944,13 +2381,33 @@ const ABAScheduler = () => {
 
   const handleAutoAssign = () => {
     try {
-      console.log('Starting Auto-Assignment...');
+      console.log('\n🚀 Starting Auto-Assignment...');
+      
+      // DEBUG: Show current staff breakdown by role
+      const roleBreakdown = {};
+      staff.forEach(s => {
+        if (!roleBreakdown[s.role]) roleBreakdown[s.role] = { total: 0, available: 0, absent: 0 };
+        roleBreakdown[s.role].total++;
+        if (s.available) roleBreakdown[s.role].available++;
+        
+        const attendance = getStaffAttendance(s.id, selectedDate);
+        if (attendance === 'absent_full' || attendance === 'absent_am' || attendance === 'absent_pm') {
+          roleBreakdown[s.role].absent++;
+        }
+      });
+      
+      console.log('\n📊 STAFF BREAKDOWN BY ROLE:');
+      Object.keys(roleBreakdown).sort().forEach(role => {
+        const data = roleBreakdown[role];
+        console.log(`${role}: ${data.total} total, ${data.available} available, ${data.absent} absent`);
+      });
+      
       const newSchedule = generateSchedule();
       setSchedule(newSchedule);
       // Don't show the popup modal anymore - analysis is shown inline
-      console.log('Auto-assignment completed successfully');
+      console.log('✅ Auto-assignment completed successfully');
     } catch (error) {
-      console.error('Auto-assignment failed:', error);
+      console.error('❌ Auto-assignment failed:', error);
       alert('Auto-assignment failed: ' + error.message);
     }
   };
@@ -2124,14 +2581,7 @@ const ABAScheduler = () => {
         return false;
       }
       
-      // Check if staff is on the student's team for AM/PM sessions
-      const staffMember = staff.find(s => s.id === staffId);
-      if (staffMember && (currentSessionType.includes('AM') || currentSessionType.includes('PM'))) {
-        const studentTeamStaff = currentStudent.teamStaff || [];
-        if (!studentTeamStaff.includes(staffMember.name)) {
-          return true; // Flag as conflict - staff not on student's team
-        }
-      }
+      // NOTE: No need to check team staff anymore since algorithm prevents non-team assignments
       
       // Check for same-time conflicts (staff assigned to multiple students at same time)
       const conflictingAssignments = todaySessions.filter(session => 
@@ -2147,8 +2597,8 @@ const ABAScheduler = () => {
           
           // Determine which ratio to check based on session type
           const getCurrentRatio = (student, sessionType) => {
-            if (sessionType.includes('AM')) return student.amRatio || student.ratio;
-            if (sessionType.includes('PM')) return student.pmRatio || student.ratio;
+            if (sessionType.includes('AM')) return student.amRatio !== undefined ? student.amRatio : student.ratio;
+            if (sessionType.includes('PM')) return student.pmRatio !== undefined ? student.pmRatio : student.ratio;
             return student.ratio; // Fallback for other session types
           };
           
@@ -2643,7 +3093,7 @@ const ABAScheduler = () => {
                               )}
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
-                            {(student.amRatio || student.ratio) === '2:1' ? (
+                            {(student.amRatio !== undefined ? student.amRatio : student.ratio) === '2:1' ? (
                               <div className="grid grid-cols-2 gap-1 w-full mt-1">
                                 <div className="flex flex-col">
                                   <label className="text-xs font-semibold mb-1">Staff 1:</label>
@@ -2747,7 +3197,7 @@ const ABAScheduler = () => {
                               )}
                             </div>
                             {/* Show appropriate dropdowns based on student ratio */}
-                            {(student.pmRatio || student.ratio) === '2:1' ? (
+                            {(student.pmRatio !== undefined ? student.pmRatio : student.ratio) === '2:1' ? (
                               <div className="grid grid-cols-2 gap-1 w-full mt-1">
                                 <div className="flex flex-col">
                                   <label className="text-xs font-semibold mb-1">Staff 1:</label>
@@ -2855,7 +3305,7 @@ const ABAScheduler = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">⚠️</span>
-              <span className="text-gray-600">AM/PM Scheduling Conflict or Non-Team Staff</span>
+              <span className="text-gray-600">AM/PM Scheduling Conflict</span>
             </div>
           </div>
 
