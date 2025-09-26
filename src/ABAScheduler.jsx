@@ -1954,6 +1954,7 @@ const ABAScheduler = () => {
                       CC: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.CC) || 0} • 
                       EA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.EA) || 0} • 
                       Trainer: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.Trainer) || 0} • 
+                      Teacher: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.Teacher) || 0} • 
                       MHA: {(scheduleAnalysis.amRoleDistribution && scheduleAnalysis.amRoleDistribution.MHA) || 0}
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1969,6 +1970,7 @@ const ABAScheduler = () => {
                                 staff.role === 'CC' ? 'text-yellow-600' :
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
                                 staff.role === 'RBT' ? 'text-green-600' :
                                 'text-gray-600'
@@ -1991,6 +1993,7 @@ const ABAScheduler = () => {
                                 staff.role === 'CC' ? 'text-yellow-600' :
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
                                 staff.role === 'RBT' ? 'text-green-600' :
                                 'text-gray-600'
@@ -2016,6 +2019,7 @@ const ABAScheduler = () => {
                       CC: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.CC) || 0} • 
                       EA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.EA) || 0} • 
                       Trainer: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.Trainer) || 0} • 
+                      Teacher: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.Teacher) || 0} • 
                       MHA: {(scheduleAnalysis.pmRoleDistribution && scheduleAnalysis.pmRoleDistribution.MHA) || 0}
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-2">
@@ -2031,6 +2035,7 @@ const ABAScheduler = () => {
                                 staff.role === 'CC' ? 'text-yellow-600' :
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
                                 staff.role === 'RBT' ? 'text-green-600' :
                                 'text-gray-600'
@@ -2053,6 +2058,7 @@ const ABAScheduler = () => {
                                 staff.role === 'CC' ? 'text-yellow-600' :
                                 staff.role === 'EA' ? 'text-pink-600' :
                                 staff.role === 'Trainer' ? 'text-orange-600' :
+                                staff.role === 'Teacher' ? 'text-orange-600' :
                                 staff.role === 'MHA' ? 'text-indigo-600' :
                                 staff.role === 'RBT' ? 'text-green-600' :
                                 'text-gray-600'
