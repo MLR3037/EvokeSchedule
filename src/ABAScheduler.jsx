@@ -1200,6 +1200,58 @@ const ABAScheduler = () => {
       staffUsage[member.id] = { am: false, pm: false, sessions: 0, lunchCoverage: 0 };
     });
 
+    // PHASE 0: Process locked assignments first
+    console.log('Phase 0: Processing locked assignments...');
+    students.forEach(student => {
+      const lock = lockedAssignments[student.id] || {};
+      const amSessionType = student.lunchSchedule === 'First' ? 'AM Session (8:45-11:30)' : 'AM Session (8:45-12:00)';
+      const pmSessionType = student.lunchSchedule === 'First' ? 'PM (12:00-15:00)' : 'PM (12:30-15:00)';
+
+      // Create locked AM assignment
+      if (lock.AM && !isStudentAbsent(student, 'AM')) {
+        const staffMember = staff.find(s => s.id === lock.AM);
+        if (staffMember && staffMember.available) {
+          const amSession = {
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: lock.AM,
+            sessionType: amSessionType,
+            date: selectedDate,
+            time: SESSION_TYPES[amSessionType],
+            isLocked: true
+          };
+          newSchedule.push(amSession);
+          staffUsage[lock.AM].am = true;
+          staffUsage[lock.AM].sessions += 1;
+          studentStaffPairings[`${student.id}-${lock.AM}`] = true;
+          addAssignmentToHistory(student.id, lock.AM, selectedDate);
+          console.log(`LOCKED: ${staffMember.role} ${staffMember.name} to ${student.name} - AM`);
+        }
+      }
+
+      // Create locked PM assignment
+      if (lock.PM && !isStudentAbsent(student, 'PM')) {
+        const staffMember = staff.find(s => s.id === lock.PM);
+        if (staffMember && staffMember.available) {
+          const pmSession = {
+            id: Date.now() + Math.random(),
+            studentId: student.id,
+            staffId: lock.PM,
+            sessionType: pmSessionType,
+            date: selectedDate,
+            time: SESSION_TYPES[pmSessionType],
+            isLocked: true
+          };
+          newSchedule.push(pmSession);
+          staffUsage[lock.PM].pm = true;
+          staffUsage[lock.PM].sessions += 1;
+          studentStaffPairings[`${student.id}-${lock.PM}`] = true;
+          addAssignmentToHistory(student.id, lock.PM, selectedDate);
+          console.log(`LOCKED: ${staffMember.role} ${staffMember.name} to ${student.name} - PM`);
+        }
+      }
+    });
+
     // Build assignment queue (AM/PM sessions + lunch coverage)
     const assignmentQueue = [];
     const lunchQueue = [];
@@ -1877,11 +1929,13 @@ const ABAScheduler = () => {
       const session = sessionArray[0];
       const staffMember = staff.find(s => s.id === session.staffId);
       const displayTime = getSessionDisplayTime(session.sessionType);
-      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}` : 'Unknown';
+      const isLocked = session.isLocked;
+      const lockIcon = isLocked ? ' 🔒' : '';
+      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}${lockIcon}` : 'Unknown';
       
       return {
         display: staffDisplay,
-        class: sessionType === 'LUNCH' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+        class: isLocked ? 'bg-green-100 text-green-800 border border-green-300' : (sessionType === 'LUNCH' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700')
       };
     };
 
@@ -2328,6 +2382,10 @@ const ABAScheduler = () => {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-orange-100 border border-orange-200 rounded"></div>
               <span className="text-gray-600">Assigned (2:1)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+              <span className="text-gray-600">Locked Assignment 🔒</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-purple-100 border border-purple-200 rounded"></div>
