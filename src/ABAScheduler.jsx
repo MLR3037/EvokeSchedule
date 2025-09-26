@@ -1674,18 +1674,29 @@ const ABAScheduler = () => {
       const unavailableStaff = staff.filter(s => !s.available);
       const unassignedStaff = availableStaff.filter(s => !assignedStaffIds.has(s.id));
       
-      // Separate AM/PM unassigned and unavailable staff (considering attendance)
+      // Separate AM/PM unassigned and unavailable staff (considering attendance AND locked assignments)
       const amAssignedStaffIds = new Set(amSessions.map(s => s.staffId));
       const pmAssignedStaffIds = new Set(pmSessions.map(s => s.staffId));
       
+      // Get locked assignment staff IDs
+      const amLockedStaffIds = new Set();
+      const pmLockedStaffIds = new Set();
+      
+      Object.values(lockedAssignments).forEach(locks => {
+        if (locks.AM) amLockedStaffIds.add(locks.AM);
+        if (locks.PM) pmLockedStaffIds.add(locks.PM);
+      });
+      
       const unassignedAMStaff = availableStaff.filter(s => {
-        if (amAssignedStaffIds.has(s.id)) return false;
+        if (amAssignedStaffIds.has(s.id)) return false; // Already assigned in schedule
+        if (amLockedStaffIds.has(s.id)) return false; // Locked to a student (considered assigned)
         const attendance = getStaffAttendance(s.id, selectedDate);
         return attendance !== 'absent_full' && attendance !== 'absent_am';
       });
       
       const unassignedPMStaff = availableStaff.filter(s => {
-        if (pmAssignedStaffIds.has(s.id)) return false;
+        if (pmAssignedStaffIds.has(s.id)) return false; // Already assigned in schedule
+        if (pmLockedStaffIds.has(s.id)) return false; // Locked to a student (considered assigned)
         const attendance = getStaffAttendance(s.id, selectedDate);
         return attendance !== 'absent_full' && attendance !== 'absent_pm';
       });
@@ -1852,7 +1863,7 @@ const ABAScheduler = () => {
     );
   };
 
-  const getStudentScheduleRow = (student) => {
+    const getStudentScheduleRow = (student) => {
     const todaySessions = schedule.filter(s => s.date === selectedDate);
     const studentSessions = todaySessions.filter(s => s.studentId === student.id);
 
@@ -1869,7 +1880,62 @@ const ABAScheduler = () => {
     const isAbsentAM = isStudentAbsent(student, 'AM');
     const isAbsentPM = isStudentAbsent(student, 'PM');
 
-    // FIXED: Remove end times from lunch sessions
+    // Helper function to detect staff conflicts
+    const hasStaffConflict = (staffId, currentSessionType, currentStudentId) => {
+      if (!staffId) return false;
+      
+      const currentStudent = students.find(s => s.id === currentStudentId);
+      if (!currentStudent) return false;
+      
+      // Check for same-time conflicts (staff assigned to multiple students at same time)
+      const conflictingAssignments = todaySessions.filter(session => 
+        session.staffId === staffId && 
+        session.studentId !== currentStudentId &&
+        doSessionTypesOverlap(session.sessionType, currentSessionType)
+      );
+
+      // For legitimate 2:1 assignments, don't flag as conflict if both students have 2:1 ratio
+      if (conflictingAssignments.length > 0) {
+        const isLegitimate2to1 = conflictingAssignments.every(conflictSession => {
+          const conflictStudent = students.find(s => s.id === conflictSession.studentId);
+          return conflictStudent && conflictStudent.ratio === '2:1' && currentStudent.ratio === '2:1';
+        });
+        
+        if (isLegitimate2to1) {
+          // Don't flag as conflict for legitimate 2:1 assignments
+        } else {
+          return true; // Flag as conflict for non-2:1 double booking
+        }
+      }
+
+      // Check for all-day assignment (staff assigned both AM and PM)
+      const staffAllAssignments = todaySessions.filter(session => session.staffId === staffId);
+      const hasAM = staffAllAssignments.some(s => s.sessionType.includes('AM'));
+      const hasPM = staffAllAssignments.some(s => s.sessionType.includes('PM'));
+      const isAllDay = hasAM && hasPM;
+
+      return isAllDay; // Flag staff working both AM and PM as potential conflict
+    };
+
+    // Helper function to check if session types overlap in time
+    const doSessionTypesOverlap = (sessionType1, sessionType2) => {
+      // AM sessions overlap with each other, PM sessions overlap with each other
+      const amTypes = ['AM Session (8:45-11:30)', 'AM Session (8:45-12:00)'];
+      const pmTypes = ['PM (12:00-15:00)', 'PM (12:30-15:00)'];
+      const lunchTypes = ['Lunch 1 (11:30-12:00)', 'Lunch 2 (12:00-12:30)'];
+      
+      if (amTypes.includes(sessionType1) && amTypes.includes(sessionType2)) return true;
+      if (pmTypes.includes(sessionType1) && pmTypes.includes(sessionType2)) return true;
+      if (lunchTypes.includes(sessionType1) && lunchTypes.includes(sessionType2)) return true;
+      
+      // Check for lunch/session overlaps
+      if (sessionType1 === 'AM Session (8:45-12:00)' && sessionType2 === 'Lunch 1 (11:30-12:00)') return true;
+      if (sessionType1 === 'Lunch 1 (11:30-12:00)' && sessionType2 === 'AM Session (8:45-12:00)') return true;
+      if (sessionType1 === 'PM (12:00-15:00)' && sessionType2 === 'Lunch 2 (12:00-12:30)') return true;
+      if (sessionType1 === 'Lunch 2 (12:00-12:30)' && sessionType2 === 'PM (12:00-15:00)') return true;
+      
+      return false;
+    };    // FIXED: Remove end times from lunch sessions
     const getSessionDisplayTime = (sessionType) => {
       if (sessionType === 'AM Session (8:45-11:30)') return '11:30';
       if (sessionType === 'AM Session (8:45-12:00)') return '12:00';
@@ -1917,7 +1983,9 @@ const ABAScheduler = () => {
         const staffDisplays = sessionArray.map(session => {
           const staffMember = staff.find(s => s.id === session.staffId);
           const displayTime = getSessionDisplayTime(session.sessionType);
-          return staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}` : 'Unknown';
+          const hasConflict = hasStaffConflict(session.staffId, session.sessionType, student.id);
+          const alertIcon = hasConflict ? ' ⚠️' : '';
+          return staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}${alertIcon}` : 'Unknown';
         });
         
         return {
@@ -1930,8 +1998,10 @@ const ABAScheduler = () => {
       const staffMember = staff.find(s => s.id === session.staffId);
       const displayTime = getSessionDisplayTime(session.sessionType);
       const isLocked = session.isLocked;
+      const hasConflict = hasStaffConflict(session.staffId, session.sessionType, student.id);
       const lockIcon = isLocked ? ' 🔒' : '';
-      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}${lockIcon}` : 'Unknown';
+      const alertIcon = hasConflict ? ' ⚠️' : '';
+      const staffDisplay = staffMember ? `${staffMember.role} ${staffMember.name}${displayTime ? ` (${displayTime})` : ''}${lockIcon}${alertIcon}` : 'Unknown';
       
       return {
         display: staffDisplay,
@@ -2374,7 +2444,7 @@ const ABAScheduler = () => {
           </div>
 
           {/* Legend */}
-          <div className="flex gap-6 text-sm mt-6">
+          <div className="flex gap-6 text-sm mt-6 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded"></div>
               <span className="text-gray-600">Assigned (1:1)</span>
@@ -2398,6 +2468,10 @@ const ABAScheduler = () => {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
               <span className="text-gray-600">Student Absent</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <span className="text-gray-600">Scheduling Conflict</span>
             </div>
           </div>
 
