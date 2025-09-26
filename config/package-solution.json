@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "aba-scheduler-client-side-solution",
+    "id": "f76d3db3-50c8-4cac-8dcb-7a23fa4b5805",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Evoke Behavioral Health",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": ""
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "ABA Scheduler for daily staff and client scheduling"
+      },
+      "longDescription": {
+        "default": "Comprehensive ABA scheduling application with SharePoint integration for staff management, client scheduling, and assignment tracking."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": ["Productivity", "Healthcare"]
+    },
+    "features": [{
+      "title": "ABA Scheduler Feature",
+      "description": "The feature that activates ABA Scheduler functionality",
+      "id": "f76d3db3-50c8-4cac-8dcb-7a23fa4b5806",
+      "version": "1.0.0.0"
+    }]
+  },
+  "paths": {
+    "zippedPackage": "solution/aba-scheduler.sppkg"
+  }
+}

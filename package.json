@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.24.0",
+    "@azure/msal-react": "^3.0.20",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
