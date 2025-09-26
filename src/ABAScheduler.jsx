@@ -1498,8 +1498,19 @@ const ABAScheduler = () => {
         }
       });
 
+      // Get all assigned staff IDs (AM, PM, and Lunch)
       const assignedStaffIds = new Set(todaySchedule.map(s => s.staffId));
-      const unassignedStaff = staff.filter(s => s.available && !assignedStaffIds.has(s.id));
+      
+      // Calculate truly unassigned staff
+      const availableStaff = staff.filter(s => s.available);
+      const unassignedStaff = availableStaff.filter(s => !assignedStaffIds.has(s.id));
+      
+      // Separate AM/PM unassigned staff
+      const amAssignedStaffIds = new Set(amSessions.map(s => s.staffId));
+      const pmAssignedStaffIds = new Set(pmSessions.map(s => s.staffId));
+      
+      const unassignedAMStaff = availableStaff.filter(s => !amAssignedStaffIds.has(s.id));
+      const unassignedPMStaff = availableStaff.filter(s => !pmAssignedStaffIds.has(s.id));
 
       return {
         amUtilization,
@@ -1507,6 +1518,10 @@ const ABAScheduler = () => {
         amRoleDistribution,
         pmRoleDistribution,
         unassignedStaff,
+        unassignedAMStaff,
+        unassignedPMStaff,
+        totalAvailableStaff: availableStaff.length,
+        totalAssignedStaff: assignedStaffIds.size,
         issues: []
       };
     } catch (error) {
@@ -1517,6 +1532,10 @@ const ABAScheduler = () => {
         amRoleDistribution: {},
         pmRoleDistribution: {},
         unassignedStaff: [],
+        unassignedAMStaff: [],
+        unassignedPMStaff: [],
+        totalAvailableStaff: 0,
+        totalAssignedStaff: 0,
         issues: []
       };
     }
@@ -1741,7 +1760,7 @@ const ABAScheduler = () => {
 
   // Main scheduler interface
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
+    <div className="max-w-full mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg">
         <div className="p-6">
           {/* Status bar */}
@@ -1770,8 +1789,6 @@ const ABAScheduler = () => {
               <li>Select staff/student pairs to lock in the last 2 columns to the right.</li>
               <li>Select Auto-Assign Sessions for intelligent scheduling with variety tracking.</li>
               <li>All data persists in SharePoint - no more lost changes!</li>
-              <li>✅ Fixed: Lunch logic now works for all students requiring coverage.</li>
-              <li>✅ Fixed: Manual edit dropdowns available for all sessions.</li>
             </ol>
           </div>
 
@@ -1780,7 +1797,7 @@ const ABAScheduler = () => {
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-semibold text-blue-800 mb-4">Schedule Analysis - {selectedDate}</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded p-3 border">
                   <h4 className="font-medium text-gray-700 mb-2">AM Sessions ({scheduleAnalysis.amUtilization}% Utilized)</h4>
                   <div className="text-sm space-y-1">
@@ -1795,10 +1812,20 @@ const ABAScheduler = () => {
                   </div>
                 </div>
 
-                {/* Unassigned Staff */}
+                {/* Staff Utilization */}
                 <div className="bg-white rounded p-3 border">
-                  <h4 className="font-medium text-gray-700 mb-2">Unassigned Staff ({scheduleAnalysis.unassignedStaff ? scheduleAnalysis.unassignedStaff.length : 0})</h4>
-                  <div className="text-sm space-y-1 max-h-20 overflow-y-auto">
+                  <h4 className="font-medium text-gray-700 mb-2">Staff Utilization</h4>
+                  <div className="text-sm space-y-1">
+                    <div className="text-green-600">Assigned: {scheduleAnalysis.totalAssignedStaff || 0}</div>
+                    <div className="text-orange-600">Unassigned: {scheduleAnalysis.unassignedStaff ? scheduleAnalysis.unassignedStaff.length : 0}</div>
+                    <div className="text-gray-600">Available: {scheduleAnalysis.totalAvailableStaff || 0}</div>
+                  </div>
+                </div>
+
+                {/* Unassigned Staff Names */}
+                <div className="bg-white rounded p-3 border">
+                  <h4 className="font-medium text-gray-700 mb-2">Unassigned Staff Details</h4>
+                  <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
                     {scheduleAnalysis.unassignedStaff && scheduleAnalysis.unassignedStaff.length > 0 ? (
                       scheduleAnalysis.unassignedStaff.map(staff => (
                         <div key={staff.id} className="text-orange-600">
@@ -1806,7 +1833,7 @@ const ABAScheduler = () => {
                         </div>
                       ))
                     ) : (
-                      <div className="text-green-600">All staff assigned!</div>
+                      <div className="text-green-600">All available staff assigned!</div>
                     )}
                   </div>
                 </div>
@@ -1814,77 +1841,78 @@ const ABAScheduler = () => {
             </div>
           )}
 
+          {/* Title */}
+          <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Evoke Daily Schedule</h2>
+
           {/* Controls */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Evoke Daily Schedule</h2>
-            <div className="flex gap-4 items-center">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="p-2 border rounded-md"
-              />
-              <button
-                onClick={handleClearSchedule}
-                className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-              >
-                Clear Schedule
-              </button>
-              <button
-                onClick={handleAutoAssign}
-                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-              >
-                Auto-Assign Sessions
-              </button>
-              <button
-                onClick={handleExportCSV}
-                className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
-                  schedule.length > 0 
-                    ? 'bg-indigo-500 text-white hover:bg-indigo-600' 
-                    : 'bg-gray-400 text-white cursor-not-allowed'
-                }`}
-                disabled={schedule.length === 0}
-              >
-                <Download size={16} />
-                Export CSV
-              </button>
-              <button
-                onClick={() => setShowVarietyTracker(true)}
-                className="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600 transition-colors"
-              >
-                Assignment History
-              </button>
-              <button
-                onClick={() => setShowStaffManager(true)}
-                className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors"
-              >
-                Manage Staff
-              </button>
-              <button
-                onClick={() => setShowAttendanceManager(true)}
-                className="bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition-colors"
-              >
-                Attendance
-              </button>
-              <button
-                onClick={() => setShowTeamManager(true)}
-                className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors"
-              >
-                Manage Teams
-              </button>
-              <button
-                onClick={() => setShowAddStaff(true)}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Add Staff
-              </button>
-              <button
-                onClick={() => setShowAddClient(true)}
-                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-              >
-                Add Client
-              </button>
-            </div>
+          <div className="flex flex-wrap justify-center gap-3 mb-6">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="p-2 border rounded-md"
+            />
+            <button
+              onClick={handleClearSchedule}
+              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+            >
+              Clear Schedule
+            </button>
+            <button
+              onClick={handleAutoAssign}
+              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+            >
+              Auto-Assign Sessions
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                schedule.length > 0 
+                  ? 'bg-indigo-500 text-white hover:bg-indigo-600' 
+                  : 'bg-gray-400 text-white cursor-not-allowed'
+              }`}
+              disabled={schedule.length === 0}
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+            <button
+              onClick={() => setShowVarietyTracker(true)}
+              className="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600 transition-colors"
+            >
+              Assignment History
+            </button>
+            <button
+              onClick={() => setShowStaffManager(true)}
+              className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors"
+            >
+              Manage Staff
+            </button>
+            <button
+              onClick={() => setShowAttendanceManager(true)}
+              className="bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition-colors"
+            >
+              Attendance
+            </button>
+            <button
+              onClick={() => setShowTeamManager(true)}
+              className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors"
+            >
+              Manage Teams
+            </button>
+            <button
+              onClick={() => setShowAddStaff(true)}
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Add Staff
+            </button>
+            <button
+              onClick={() => setShowAddClient(true)}
+              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+            >
+              Add Client
+            </button>
+          </div>
           </div>
 
           {/* Schedule Table */}
@@ -1893,15 +1921,15 @@ const ABAScheduler = () => {
               <table className="w-full table-fixed">
                 <thead className="bg-gray-100 sticky top-0">
                   <tr>
-                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-32">STUDENT</th>
-                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-24">PROGRAM</th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-40">AM SESSION</th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-32">LUNCH 1<br/><span className="text-xs">(11:30-12:00)</span></th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-32">LUNCH 2<br/><span className="text-xs">(12:00-12:30)</span></th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-40">PM SESSION</th>
-                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-48">TEAM STAFF</th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-28">Lock AM</th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-28">Lock PM</th>
+                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-40">STUDENT</th>
+                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-28">PROGRAM</th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-44">AM SESSION</th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-36">LUNCH 1<br/><span className="text-xs">(11:30-12:00)</span></th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-36">LUNCH 2<br/><span className="text-xs">(12:00-12:30)</span></th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-44">PM SESSION</th>
+                    <th className="px-3 py-3 text-left font-semibold text-gray-700 w-64">TEAM STAFF</th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-32">Lock AM</th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 w-32">Lock PM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1909,24 +1937,43 @@ const ABAScheduler = () => {
                     const rowData = getStudentScheduleRow(student);
                     const teamStaffMembers = staff.filter(s => s.available && (student.teamStaff || []).includes(s.name));
                     
+                    // Get session assignments for this student
+                    const amSessions = schedule.filter(s => s.studentId === student.id && s.timeSlot === 'AM');
+                    const pmSessions = schedule.filter(s => s.studentId === student.id && s.timeSlot === 'PM');
+                    
                     return (
                       <tr key={student.id} className="border-t bg-white">
-                        <td className="px-3 py-3 w-32">
-                          <div className="font-medium text-gray-900 truncate">{student.name}</div>
-                          <div className="text-xs text-gray-500 truncate">
+                        <td className="px-3 py-3 w-40">
+                          <div className="font-medium text-gray-900">{student.name}</div>
+                          <div className="text-xs text-gray-500">
                             {student.ratio} • {student.lunchSchedule} Lunch
-                            {student.requiresLunch1to1 && <span className="ml-1 text-red-600">• 1:1</span>}
-                            {student.lunchPairing && !student.requiresLunch1to1 && <span className="ml-1 text-blue-600">• Paired</span>}
+                            {student.requiresLunch1to1 && <div className="text-red-600">• 1:1 Lunch Required</div>}
+                            {student.lunchPairing && !student.requiresLunch1to1 && <div className="text-blue-600">• Paired Lunch</div>}
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-left text-gray-800 font-medium w-24 text-sm">{getProgramForStudent(student)}</td>
-                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-40 ${rowData.amClass}`}>
+                        <td className="px-3 py-3 text-left text-gray-800 font-medium w-28 text-sm">{getProgramForStudent(student)}</td>
+                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-44 ${rowData.amClass}`}>
                           <div className="flex flex-col items-center space-y-1">
-                            <div className="truncate w-full text-center">{rowData.amDisplay}</div>
-                            {/* FIXED: Always show manual assignment dropdown */}
+                            <div className="w-full text-center">
+                              {/* Show all staff for 2:1 assignments */}
+                              {amSessions.length > 1 ? (
+                                <div className="space-y-1">
+                                  {amSessions.map((session, index) => {
+                                    const staffMember = staff.find(s => s.id === session.staffId);
+                                    return (
+                                      <div key={index} className="text-xs">
+                                        {staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div>{rowData.amDisplay}</div>
+                              )}
+                            </div>
                             <select
                               onChange={(e) => handleManualAssignment(student.id, 'AM', e.target.value)}
-                              className="text-xs p-1 rounded border bg-white w-full max-w-[100px]"
+                              className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
                               value=""
                             >
                               <option value="">Manual Edit</option>
@@ -1936,13 +1983,13 @@ const ABAScheduler = () => {
                             </select>
                           </div>
                         </td>
-                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-32 ${rowData.lunch1Class}`}>
+                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-36 ${rowData.lunch1Class}`}>
                           <div className="flex flex-col items-center space-y-1">
-                            <div className="truncate w-full text-center">{rowData.lunch1Display}</div>
-                            {(rowData.lunch1Display === 'NEEDED' || rowData.lunch1Display !== 'N/A') && (
+                            <div className="w-full text-center">{rowData.lunch1Display}</div>
+                            {(rowData.lunch1Display === 'NEEDED' || (rowData.lunch1Display !== 'N/A' && rowData.lunch1Display !== 'ABSENT')) && (
                               <select
                                 onChange={(e) => handleManualAssignment(student.id, 'LUNCH1', e.target.value)}
-                                className="text-xs p-1 rounded border bg-white w-full max-w-[100px]"
+                                className="text-xs p-1 rounded border bg-white w-full max-w-[120px]"
                                 value=""
                               >
                                 <option value="">Manual Edit</option>
@@ -1953,13 +2000,13 @@ const ABAScheduler = () => {
                             )}
                           </div>
                         </td>
-                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-32 ${rowData.lunch2Class}`}>
+                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-36 ${rowData.lunch2Class}`}>
                           <div className="flex flex-col items-center space-y-1">
-                            <div className="truncate w-full text-center">{rowData.lunch2Display}</div>
-                            {(rowData.lunch2Display === 'NEEDED' || rowData.lunch2Display !== 'N/A') && (
+                            <div className="w-full text-center">{rowData.lunch2Display}</div>
+                            {(rowData.lunch2Display === 'NEEDED' || (rowData.lunch2Display !== 'N/A' && rowData.lunch2Display !== 'ABSENT')) && (
                               <select
                                 onChange={(e) => handleManualAssignment(student.id, 'LUNCH2', e.target.value)}
-                                className="text-xs p-1 rounded border bg-white w-full max-w-[100px]"
+                                className="text-xs p-1 rounded border bg-white w-full max-w-[120px]"
                                 value=""
                               >
                                 <option value="">Manual Edit</option>
@@ -1970,13 +2017,28 @@ const ABAScheduler = () => {
                             )}
                           </div>
                         </td>
-                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-40 ${rowData.pmClass}`}>
+                        <td className={`px-3 py-3 text-center text-xs font-medium rounded-md mx-1 w-44 ${rowData.pmClass}`}>
                           <div className="flex flex-col items-center space-y-1">
-                            <div className="truncate w-full text-center">{rowData.pmDisplay}</div>
-                            {/* FIXED: Always show manual assignment dropdown */}
+                            <div className="w-full text-center">
+                              {/* Show all staff for 2:1 assignments */}
+                              {pmSessions.length > 1 ? (
+                                <div className="space-y-1">
+                                  {pmSessions.map((session, index) => {
+                                    const staffMember = staff.find(s => s.id === session.staffId);
+                                    return (
+                                      <div key={index} className="text-xs">
+                                        {staffMember ? `${staffMember.role} ${staffMember.name}` : 'Unknown'}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div>{rowData.pmDisplay}</div>
+                              )}
+                            </div>
                             <select
                               onChange={(e) => handleManualAssignment(student.id, 'PM', e.target.value)}
-                              className="text-xs p-1 rounded border bg-white w-full max-w-[100px]"
+                              className="text-xs p-1 rounded border bg-white w-full max-w-[140px]"
                               value=""
                             >
                               <option value="">Manual Edit</option>
@@ -1986,12 +2048,12 @@ const ABAScheduler = () => {
                             </select>
                           </div>
                         </td>
-                        <td className="px-3 py-3 w-48">
-                          <div className="text-xs text-gray-600 overflow-hidden">
+                        <td className="px-3 py-3 w-64">
+                          <div className="text-xs text-gray-600 leading-relaxed">
                             {renderTeamStaff(student)}
                           </div>
                         </td>
-                        <td className="px-3 py-3 w-28">
+                        <td className="px-3 py-3 w-32">
                           <select
                             value={lockedAssignments[student.id]?.AM || ''}
                             onChange={e => handleLockAssignment(student.id, 'AM', e.target.value)}
@@ -2003,7 +2065,7 @@ const ABAScheduler = () => {
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-3 w-28">
+                        <td className="px-3 py-3 w-32">
                           <select
                             value={lockedAssignments[student.id]?.PM || ''}
                             onChange={e => handleLockAssignment(student.id, 'PM', e.target.value)}
